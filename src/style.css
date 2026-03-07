@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Defined in assets/theme.css */
+}
+
+body {
+  background-color: var(--bg-body);
+}
