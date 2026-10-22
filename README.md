@@ -4,6 +4,8 @@
 
 当前题库已完成格式统一和 AES-256-GCM 存储加密，会员与题库访问权限由服务端控制。最近一次生产发布和验证记录见 [docs/deployment-2026-10-22.md](docs/deployment-2026-10-22.md)。
 
+GitHub 仓库：<https://github.com/zhz520/cangshuo-study-center>。公开仓库只包含源码、文档和构建所需的小体积 SDK 文件；原始题库 JSON、APK、用户上传内容、真实 `.env`、Firebase 配置和推送私钥保留在本机或私有备份，不进入公开仓库。
+
 ## 目录
 
 ```text
