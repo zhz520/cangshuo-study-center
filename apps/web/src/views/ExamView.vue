@@ -334,6 +334,9 @@ onMounted(async () => {
     if (route.query.mode === 'recommendation') {
         mode.value = 'recommendation';
         await loadRecommendations();
+    } else if (route.query.mode === 'wrong') {
+        mode.value = 'wrong';
+        updateDisplayList(false);
     } else {
         // Normal Load
         updateDisplayList(false);
@@ -958,37 +961,34 @@ const handleAiExplain = async () => {
 </script>
 
 <template>
-  <div
-    class="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col transition-colors duration-500"
-  >
+  <div class="exam-shell">
     <!-- Progress Bar (Sticky Top) -->
-    <div class="fixed top-0 left-0 right-0 h-1 bg-slate-200 dark:bg-slate-800 z-50">
+    <div class="exam-progress">
         <div
-            class="h-full bg-indigo-500 transition-all duration-300 ease-out shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+            class="exam-progress-bar"
             :style="{ width: `${((currentIndex + 1) / (displayList.length || 1)) * 100}%` }"
         ></div>
     </div>
 
     <!-- Top Bar -->
-    <header
-      class="glass-nav px-4 py-3 flex justify-between items-center sticky top-0 z-40 print:hidden shadow-sm"
-    >
+    <header class="exam-topbar print:hidden">
       <button
         @click="router.back()"
-        class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+        class="exam-icon-btn"
+        aria-label="返回"
       >
-        <span class="text-xl">←</span>
+        <span>←</span>
       </button>
 
-      <div class="flex flex-col items-center">
-        <span class="font-bold text-slate-700 dark:text-slate-200 text-sm flex items-center gap-1">
-           <span v-if="mode === 'wrong'" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-           <span v-if="mode === 'recommendation'" class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+      <div class="exam-title-wrap">
+        <span class="exam-title">
+           <span v-if="mode === 'wrong'" class="exam-dot"></span>
+           <span v-if="mode === 'recommendation'" class="exam-dot"></span>
            {{ mode === "wrong" ? "错题攻克" : (mode === "recommendation" ? "智能练习" : (subjectTitle || "全真模拟")) }}
         </span>
-        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono font-bold tracking-wider mt-0.5 truncate max-w-[150px]">
-          <span class="text-indigo-500 dark:text-indigo-400 text-base">{{ currentIndex + 1 }}</span>
-          <span class="mx-1">/</span>
+        <span class="exam-counter">
+          <span class="exam-counter-current">{{ currentIndex + 1 }}</span>
+          <span class="exam-counter-sep">/</span>
           <span>{{ displayList.length }}</span>
         </span>
       </div>
@@ -996,9 +996,10 @@ const handleAiExplain = async () => {
       <div class="flex gap-1.5 sm:gap-2 relative">
         <button
           @click="showMenu = !showMenu"
-          class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-500 flex items-center justify-center transition-all active:scale-95 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700 relative z-50"
+          class="exam-icon-btn"
+          aria-label="更多操作"
         >
-          <span class="text-sm sm:text-lg font-bold">⋮</span>
+          <span>⋮</span>
         </button>
 
         <!-- Backdrop for dropdown -->
@@ -1007,7 +1008,7 @@ const handleAiExplain = async () => {
         <!-- Dropdown Menu -->
         <div
           v-if="showMenu"
-          class="absolute top-full right-0 mt-2 w-48 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-100 dark:border-slate-700 overflow-hidden animate-fade-in-up origin-top-right z-50 flex flex-col"
+          class="exam-menu"
         >
             <button
                 @click="showConfirm('智能练习', '由于前端限制，请返回首页选择科目重新进入来切换到智能练习模式。或我们可以加一个按钮触发。', 'info').then(() => { if(mode !== 'recommendation') { mode = 'recommendation'; loadRecommendations(); } else { mode = 'all'; window.location.reload(); } }); showMenu = false"
@@ -1049,71 +1050,54 @@ const handleAiExplain = async () => {
       </div>
     </header>
 
-    <div v-if="previewOnly && !loading" class="mx-auto mt-4 max-w-3xl px-4 text-sm text-slate-500" role="status">
+    <div v-if="previewOnly && !loading" class="exam-hint" role="status">
       当前为免费预览，每科开放前 20 题。升级 Plus 后可继续学习。
     </div>
-    <p v-if="loadingMore" class="text-center text-sm text-slate-500" role="status">正在加载下一批题目…</p>
+    <p v-if="loadingMore" class="exam-loading-more" role="status">正在加载下一批题目…</p>
     <!-- Content -->
     <main
       ref="questionArea"
-      class="flex-1 p-4 pb-32 max-w-3xl mx-auto w-full print:hidden relative z-0 exam-content"
+      class="exam-main print:hidden exam-content"
       @touchstart.passive="onTouchStart"
       @touchmove.passive="onTouchMove"
       @touchend.passive="onTouchEnd"
     >
-      <div v-if="loading" class="flex flex-col items-center justify-center py-32 space-y-4">
-          <div class="relative w-16 h-16">
-              <div class="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
-              <div class="absolute inset-0 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin"></div>
-          </div>
-          <p class="text-slate-400 text-sm animate-pulse">加载试题中...</p>
+      <div v-if="loading" class="exam-loading">
+          <div class="ui-spinner"></div>
+          <p>加载试题中…</p>
       </div>
 
-      <div v-else-if="loadError" class="py-20 text-center text-red-600" role="alert">{{ loadError }}</div>
+      <div v-else-if="loadError" class="exam-error" role="alert">{{ loadError }}</div>
       <div
         v-else-if="displayList.length === 0"
-        class="flex flex-col items-center justify-center py-20 text-slate-400 min-h-[50vh]"
+        class="exam-empty"
       >
-        <div class="text-6xl mb-6 opacity-50">🎉</div>
-        <h3 class="text-xl font-bold text-slate-700 dark:text-slate-200 mb-2">太棒了！</h3>
-        <p class="text-sm">当前模式下没有题目需要处理。</p>
+        <h3>当前模式下没有题目</h3>
+        <p>错题已经清空，或者这个科目还没有练习记录。</p>
         <button
           v-if="mode === 'wrong'"
           @click="toggleMode"
-          class="mt-8 px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full font-bold shadow-lg shadow-indigo-500/30 transition-all active:scale-95"
+          class="ui-btn ui-btn-primary"
         >
           返回全部题目
         </button>
       </div>
 
-      <div v-else class="space-y-6">
+      <div v-else class="exam-body">
         <!-- Swipe Hint (shown once) -->
-        <div v-if="swipeEnabled && displayList.length > 1" class="flex items-center justify-center gap-4 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider select-none">
-          <span class="flex items-center gap-1">← 上一题</span>
-          <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-          <span>👆 滑动切换</span>
-          <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-          <span class="flex items-center gap-1">下一题 →</span>
+        <div v-if="swipeEnabled && displayList.length > 1" class="exam-swipe-hint">
+          <span>← 上一题</span>
+          <span>滑动切换</span>
+          <span>下一题 →</span>
         </div>
 
         <!-- Question Card -->
         <transition :name="'slide-' + slideDirection" mode="out-in">
-        <div :key="cardKey" class="glass-card p-5 sm:p-8 relative overflow-hidden transition-all duration-300">
-           <!-- Decorative BG -->
-           <div class="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 rounded-full blur-3xl pointer-events-none"></div>
-
-          <div class="mb-6 relative z-10">
-            <div class="flex items-center gap-3 mb-4">
+        <div :key="cardKey" class="exam-card">
+          <div class="exam-question-head">
+            <div class="exam-meta">
                <span
-                  class="px-2.5 py-1 rounded-lg text-[10px] uppercase font-black tracking-wider text-white shadow-sm"
-                  :class="{
-                    'bg-gradient-to-r from-blue-400 to-blue-600': currentQuestion.content.type === 'single',
-                    'bg-gradient-to-r from-purple-400 to-purple-600': currentQuestion.content.type === 'multiple',
-                    'bg-gradient-to-r from-orange-400 to-orange-600': currentQuestion.content.type === 'judge',
-                    'bg-gradient-to-r from-emerald-400 to-emerald-600': currentQuestion.content.type === 'text' || currentQuestion.content.type === 'fill',
-                    'bg-gradient-to-r from-cyan-400 to-cyan-600': currentQuestion.content.type === 'sort',
-                    'bg-gradient-to-r from-slate-500 to-slate-700': currentQuestion.content.type === 'material',
-                  }"
+                  class="exam-type"
                 >
                     {{
                       currentQuestion.content.type === "single"
@@ -1129,28 +1113,23 @@ const handleAiExplain = async () => {
                                 : "填空题"
                     }}
                 </span>
-                <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
+                <span class="exam-category">
                     {{ currentQuestion.content._category || "未分类" }}
                 </span>
 
                 <!-- Difficulty Badge -->
                 <span
-                    class="px-2 py-1 rounded-md text-[10px] font-bold border"
-                    :class="{
-                        'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800': currentQuestion.content.difficulty == 1,
-                        'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800': currentQuestion.content.difficulty == 2,
-                        'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800': currentQuestion.content.difficulty == 3
-                    }"
+                    class="exam-difficulty"
                 >
                     {{ currentQuestion.content.difficulty == 1 ? '简单' : (currentQuestion.content.difficulty == 2 ? '中等' : '困难') }}
                 </span>
 
                 <!-- Tags -->
-                <div v-if="currentQuestion.content.tags && currentQuestion.content.tags.length > 0" class="flex gap-1">
+                <div v-if="currentQuestion.content.tags && currentQuestion.content.tags.length > 0" class="exam-tags">
                     <span
                         v-for="(tag, idx) in currentQuestion.content.tags"
                         :key="idx"
-                        class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-500 dark:bg-indigo-900/20 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800"
+                        class="exam-tag"
                     >
                         #{{ tag }}
                     </span>
@@ -1158,11 +1137,11 @@ const handleAiExplain = async () => {
             </div>
 
             <h2
-              class="font-bold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-line select-text tracking-wide"
+              class="exam-question select-text"
               :class="{
-                  'text-base sm:text-lg': fontSize === 'small',
-                  'text-lg sm:text-xl': fontSize === 'normal',
-                  'text-xl sm:text-2xl': fontSize === 'large'
+                  'is-small': fontSize === 'small',
+                  'is-normal': fontSize === 'normal',
+                  'is-large': fontSize === 'large'
               }"
             >
               <MarkdownRenderer :content="currentQuestion.content.question" />
@@ -1170,138 +1149,96 @@ const handleAiExplain = async () => {
           </div>
 
           <!-- Options Area -->
-          <div v-if="currentQuestion.content.options && currentQuestion.content.type !== 'fill' && currentQuestion.content.type !== 'sort' && Object.keys(currentQuestion.content.options).length > 0" class="space-y-3 relative z-10">
+          <div v-if="currentQuestion.content.options && currentQuestion.content.type !== 'fill' && currentQuestion.content.type !== 'sort' && Object.keys(currentQuestion.content.options).length > 0" class="exam-options">
             <button
               v-for="(optVal, optKey) in currentQuestion.content.options"
               :key="optKey"
               @click="handleAnswer(optKey)"
               :disabled="!!userAnswerData?.submitted"
-              class="w-full text-left p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex items-start group relative overflow-hidden"
+              class="exam-option"
               :class="{
-                'disabled:cursor-default': !!userAnswerData?.submitted,
-
-                /* Default State */
-                'border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 text-slate-700 dark:text-slate-200':
-                  !userAnswerData?.submitted &&
-                  !userAnswerData?.answer?.includes(optKey),
-
-                /* Selected (Multi-select In-progress) */
-                'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 shadow-md shadow-indigo-500/10':
-                  !userAnswerData?.submitted &&
-                  userAnswerData?.answer?.includes(optKey),
-
-                /* Correct Answer (Show Green) */
-                'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 shadow-md shadow-emerald-500/10':
-                  userAnswerData?.submitted &&
-                  currentQuestion.content.answer.includes(optKey),
-
-                /* Wrong Selection (Show Red) */
-                'border-rose-500 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 shadow-md shadow-rose-500/10':
+                'is-selected': !userAnswerData?.submitted && userAnswerData?.answer?.includes(optKey),
+                'is-correct': userAnswerData?.submitted && currentQuestion.content.answer.includes(optKey),
+                'is-wrong':
                   userAnswerData?.submitted &&
                   userAnswerData?.answer?.includes(optKey) &&
                   !userAnswerData.isCorrect &&
                   !currentQuestion.content.answer.includes(optKey),
-
-                /* Unselected & Not Answer (Dimmed) */
-                'opacity-60 grayscale-[0.5] border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20 text-slate-500 dark:text-slate-400':
+                'is-dim':
                   userAnswerData?.submitted &&
                   !currentQuestion.content.answer.includes(optKey) &&
                   !userAnswerData?.answer?.includes(optKey),
               }"
             >
               <!-- Option Letter Circle -->
-              <span
-                class="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black mr-4 flex-shrink-0 transition-all shadow-sm"
-                :class="{
-                  'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover:bg-white dark:group-hover:bg-slate-600':
-                    !userAnswerData?.submitted && !userAnswerData?.answer?.includes(optKey),
+              <span class="exam-option-key">{{ optKey }}</span>
 
-                  'bg-indigo-500 text-white':
-                    !userAnswerData?.submitted && userAnswerData?.answer?.includes(optKey),
-
-                  'bg-emerald-500 text-white':
-                    userAnswerData?.submitted && currentQuestion.content.answer.includes(optKey),
-
-                  'bg-rose-500 text-white':
-                    userAnswerData?.submitted &&
-                    userAnswerData?.answer?.includes(optKey) &&
-                    !userAnswerData.isCorrect &&
-                    !currentQuestion.content.answer.includes(optKey),
-                }"
-              >
-                {{ optKey }}
-              </span>
-
-              <span class="text-base font-medium leading-normal py-0.5"><MarkdownRenderer :content="String(optVal)" /></span>
+              <span class="exam-option-text"><MarkdownRenderer :content="String(optVal)" /></span>
 
               <!-- Result Icon -->
-              <div v-if="userAnswerData?.submitted" class="absolute right-4 top-1/2 -translate-y-1/2 text-xl">
-                  <span v-if="currentQuestion.content.answer.includes(optKey)">✅</span>
-                  <span v-else-if="userAnswerData?.answer?.includes(optKey) && !userAnswerData.isCorrect">❌</span>
-              </div>
+              <span v-if="userAnswerData?.submitted && currentQuestion.content.answer.includes(optKey)" class="exam-option-mark is-correct">✓</span>
+              <span v-else-if="userAnswerData?.submitted && userAnswerData?.answer?.includes(optKey) && !userAnswerData.isCorrect" class="exam-option-mark is-wrong">✕</span>
             </button>
 
             <!-- Multi-select Submit Button -->
             <div
               v-if="currentQuestion.content.type === 'multiple' && !userAnswerData?.submitted"
-              class="pt-4 flex justify-end"
+              class="exam-submit-row"
             >
               <button
                 @click="submitMulti"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/30 transition-all active:scale-95 flex items-center gap-2"
+                class="ui-btn ui-btn-primary ui-btn-lg"
               >
-                <span>确认提交</span>
-                <span class="text-indigo-200">➜</span>
+                确认提交
               </button>
             </div>
           </div>
 
           <!-- Sort Area -->
-          <div v-else-if="currentQuestion.content.type === 'sort'" class="space-y-4">
+          <div v-else-if="currentQuestion.content.type === 'sort'" class="exam-sort">
               <draggable
                 v-model="sortList"
                 item-key="index"
-                class="space-y-3"
+                class="exam-sort-list"
                 :disabled="!!userAnswerData?.submitted"
                 ghost-class="opacity-50"
               >
                   <template #item="{element, index}">
-                      <div class="p-4 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl cursor-move hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors shadow-sm flex items-center gap-4 group">
-                          <span class="text-slate-400 group-hover:text-indigo-500">☰</span>
-                          <span class="font-bold text-slate-700 dark:text-slate-200">{{ element }}</span>
+                      <div class="exam-sort-item">
+                          <span class="exam-sort-handle">☰</span>
+                          <span class="exam-sort-text">{{ element }}</span>
                       </div>
                   </template>
               </draggable>
 
-              <div v-if="!userAnswerData?.submitted" class="flex justify-end pt-4">
-                  <button @click="submitSort" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/30 transition-all active:scale-95">
+              <div v-if="!userAnswerData?.submitted" class="exam-submit-row">
+                  <button @click="submitSort" class="ui-btn ui-btn-primary ui-btn-lg">
                       确认排序
                   </button>
               </div>
           </div>
 
           <!-- Material Area -->
-          <div v-else-if="currentQuestion.content.type === 'material'" class="flex flex-col gap-6">
+          <div v-else-if="currentQuestion.content.type === 'material'" class="exam-material">
               <!-- Material Content -->
-              <div class="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 max-h-80 overflow-y-auto custom-scrollbar shadow-inner">
-                  <span class="text-xs font-bold text-slate-400 mb-3 block uppercase tracking-wider flex items-center gap-2">
-                    <span>📖</span>
+              <div class="exam-material-box">
+                  <span class="exam-material-label">
                     阅读材料
                   </span>
-                  <div class="prose prose-sm dark:prose-invert max-w-none">
+                  <div class="exam-material-copy">
                      <MarkdownRenderer :content="currentQuestion.content.question" />
                   </div>
               </div>
 
               <!-- Sub Questions -->
               <div class="space-y-8">
-                  <div v-for="(subQ, idx) in currentQuestion.content.options" :key="idx" class="space-y-4 relative">
+                  <div v-for="(subQ, idx) in currentQuestion.content.options" :key="idx" class="exam-subquestion">
                        <!-- Sub Question Header -->
                        <div class="flex gap-3 items-start">
-                           <span class="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs shrink-0 mt-0.5">{{ idx + 1 }}</span>
+                           <span class="exam-subquestion-index">{{ idx + 1 }}</span>
                            <div class="space-y-1">
-                               <span class="font-bold text-slate-800 dark:text-slate-100 text-base">{{ subQ.stem }}</span>
-                               <span class="block text-[10px] text-slate-400 font-bold uppercase">
+                               <span class="exam-subquestion-stem">{{ subQ.stem }}</span>
+                               <span class="exam-subquestion-type">
                                    {{ subQ.type === 'single' ? '单选题' : subQ.type === 'multiple' ? '多选题' : subQ.type === 'judge' ? '判断题' : '填空题' }}
                                </span>
                            </div>
@@ -1315,7 +1252,7 @@ const handleAiExplain = async () => {
                                   @input="e => handleMaterialSubAnswer(idx, e.target.value, 'fill')"
                                   :disabled="!!userAnswerData?.submitted"
                                   type="text"
-                                  class="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium"
+                      class="ui-input"
                                   placeholder="输入答案..."
                                   :class="{
                                       'border-emerald-500 bg-emerald-50/20': userAnswerData?.submitted && String(materialAnswers[idx]).trim().toLowerCase() === String(subQ.answer).trim().toLowerCase(),
@@ -1335,15 +1272,14 @@ const handleAiExplain = async () => {
                                    :key="opt"
                                    @click="handleMaterialSubAnswer(idx, opt, 'judge')"
                                    :disabled="!!userAnswerData?.submitted"
-                                   class="flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all"
+                                   class="exam-subquestion-choice"
                                    :class="{
-                                       'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700': materialAnswers[idx] === opt && !userAnswerData?.submitted,
-                                       'border-slate-200 dark:border-slate-700': materialAnswers[idx] !== opt && !userAnswerData?.submitted,
+                                       'is-selected': materialAnswers[idx] === opt && !userAnswerData?.submitted,
 
                                        // Result states
-                                       'border-emerald-500 bg-emerald-50 text-emerald-600': userAnswerData?.submitted && subQ.answer === opt,
-                                       'border-rose-500 bg-rose-50 text-rose-600': userAnswerData?.submitted && materialAnswers[idx] === opt && subQ.answer !== opt,
-                                       'opacity-50': userAnswerData?.submitted && materialAnswers[idx] !== opt && subQ.answer !== opt
+                                       'is-correct': userAnswerData?.submitted && subQ.answer === opt,
+                                       'is-wrong': userAnswerData?.submitted && materialAnswers[idx] === opt && subQ.answer !== opt,
+                                       'is-dim': userAnswerData?.submitted && materialAnswers[idx] !== opt && subQ.answer !== opt
                                    }"
                                >
                                    {{ opt === 'TRUE' ? '正确' : '错误' }}
@@ -1357,50 +1293,37 @@ const handleAiExplain = async () => {
                                    :key="optKey"
                                    @click="handleMaterialSubAnswer(idx, optKey, subQ.type)"
                                    :disabled="!!userAnswerData?.submitted"
-                                   class="w-full text-left p-3 rounded-xl border flex items-center gap-3 transition-all group"
+                                   class="exam-subquestion-option"
                                    :class="{
-                                      // Default
-                                      'border-slate-200 dark:border-slate-700 hover:bg-slate-50': !userAnswerData?.submitted && (!materialAnswers[idx] || (Array.isArray(materialAnswers[idx]) ? !materialAnswers[idx].includes(optKey) : materialAnswers[idx] !== optKey)),
-
-                                      // Selected (Active)
-                                      'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700': !userAnswerData?.submitted && (Array.isArray(materialAnswers[idx]) ? materialAnswers[idx].includes(optKey) : materialAnswers[idx] === optKey),
-
-                                      // Correct (Submitted)
-                                      'border-emerald-500 bg-emerald-50 text-emerald-700': userAnswerData?.submitted && (Array.isArray(subQ.answer) ? subQ.answer.includes(optKey) : subQ.answer === optKey),
-
-                                      // Wrong (Submitted)
-                                      'border-rose-500 bg-rose-50 text-rose-700': userAnswerData?.submitted && (Array.isArray(materialAnswers[idx]) ? materialAnswers[idx].includes(optKey) : materialAnswers[idx] === optKey) && !(Array.isArray(subQ.answer) ? subQ.answer.includes(optKey) : subQ.answer === optKey),
+                                      'is-selected': !userAnswerData?.submitted && (Array.isArray(materialAnswers[idx]) ? materialAnswers[idx].includes(optKey) : materialAnswers[idx] === optKey),
+                                      'is-correct': userAnswerData?.submitted && (Array.isArray(subQ.answer) ? subQ.answer.includes(optKey) : subQ.answer === optKey),
+                                      'is-wrong': userAnswerData?.submitted && (Array.isArray(materialAnswers[idx]) ? materialAnswers[idx].includes(optKey) : materialAnswers[idx] === optKey) && !(Array.isArray(subQ.answer) ? subQ.answer.includes(optKey) : subQ.answer === optKey),
                                    }"
                                >
-                                   <span class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold border"
-                                        :class="{
-                                            'border-current': true,
-                                            'bg-current text-white': (Array.isArray(materialAnswers[idx]) ? materialAnswers[idx].includes(optKey) : materialAnswers[idx] === optKey) || (userAnswerData?.submitted && (Array.isArray(subQ.answer) ? subQ.answer.includes(optKey) : subQ.answer === optKey))
-                                        }"
-                                   >
+                                   <span class="exam-subquestion-key">
                                        {{ optKey }}
                                    </span>
-                                   <span class="text-sm font-medium"><MarkdownRenderer :content="String(optContent)" /></span>
+                                   <span class="exam-subquestion-copy"><MarkdownRenderer :content="String(optContent)" /></span>
                                </button>
                            </div>
 
                            <!-- Sub Analysis -->
-                           <div v-if="userAnswerData?.submitted && subQ.analysis" class="mt-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-slate-600 dark:text-slate-400">
-                               <span class="font-bold text-indigo-500">解析:</span> <MarkdownRenderer :content="subQ.analysis || ''" />
+                           <div v-if="userAnswerData?.submitted && subQ.analysis" class="exam-subquestion-analysis">
+                               <span>解析：</span> <MarkdownRenderer :content="subQ.analysis || ''" />
                            </div>
                        </div>
                   </div>
               </div>
 
-              <div v-if="!userAnswerData?.submitted" class="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
-                  <button @click="submitMaterial" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/30 transition-all active:scale-95">
+              <div v-if="!userAnswerData?.submitted" class="exam-submit-row">
+                  <button @click="submitMaterial" class="ui-btn ui-btn-primary ui-btn-lg">
                       提交本题
                   </button>
               </div>
           </div>
 
           <!-- Input Area: Fill in the blank -->
-          <div v-else class="mt-6 relative z-10">
+          <div v-else class="exam-fill">
             <div class="relative w-full">
               <input
                 v-model="fillInput"
@@ -1408,16 +1331,16 @@ const handleAiExplain = async () => {
                 :disabled="!!userAnswerData"
                 type="text"
                 placeholder="在此输入答案..."
-                class="w-full p-5 pr-24 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all font-bold text-lg text-slate-800 dark:text-slate-100 placeholder:font-normal"
+                class="exam-fill-input"
                 :class="{
-                  'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20': userAnswerData && userAnswerData.isCorrect,
-                  'border-rose-500 bg-rose-50 dark:bg-rose-900/20': userAnswerData && !userAnswerData.isCorrect,
+                  'is-correct': userAnswerData && userAnswerData.isCorrect,
+                  'is-wrong': userAnswerData && !userAnswerData.isCorrect,
                 }"
               />
               <button
                 v-if="!userAnswerData"
                 @click="submitFill"
-                class="absolute right-2 top-2 bottom-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-md"
+                class="exam-fill-submit"
               >
                 提交
               </button>
@@ -1429,58 +1352,55 @@ const handleAiExplain = async () => {
         <!-- Analysis Card -->
         <div
           v-if="userAnswerData?.submitted"
-          class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-6 border border-slate-200 dark:border-slate-700 animate-slide-up shadow-sm overflow-hidden relative"
+          class="exam-analysis"
+          :class="{ 'is-wrong': !userAnswerData.isCorrect }"
         >
-          <div class="absolute top-0 left-0 w-1.5 h-full" :class="userAnswerData.isCorrect ? 'bg-emerald-500' : 'bg-rose-500'"></div>
-
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0" :class="userAnswerData.isCorrect ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'">
-                {{ userAnswerData.isCorrect ? '👏' : '🤔' }}
+          <div class="exam-analysis-head">
+            <div class="exam-analysis-icon" :class="userAnswerData.isCorrect ? 'is-correct' : 'is-wrong'">
+                {{ userAnswerData.isCorrect ? '✓' : '✕' }}
             </div>
-            <div>
-                 <h3 class="font-bold text-slate-800 dark:text-slate-100">
+            <div class="ui-grow">
+                 <h3 class="exam-analysis-title">
                      {{ userAnswerData.isCorrect ? '回答正确' : '回答错误' }}
                  </h3>
-                 <p class="text-xs text-slate-500">
+                 <p class="exam-analysis-answer">
                      正确答案：<span class="font-mono font-bold">{{ formatAnswer(currentQuestion.content.answer, currentQuestion.content.type) }}</span>
                  </p>
             </div>
           </div>
 
-          <div class="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-            <span class="font-bold text-indigo-500 block mb-1">📝 解析</span>
+          <div class="exam-analysis-body">
+            <span class="exam-analysis-label">解析</span>
             <MarkdownRenderer :content="currentQuestion.content.analysis || '暂无详细解析'" />
           </div>
 
-          <div class="grid grid-cols-2 gap-3 mt-4">
+          <div class="exam-analysis-actions">
               <a
                 :href="'https://www.baidu.com/s?wd=' + encodeURIComponent(currentQuestion.content.question)"
                 target="_blank"
-                class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-slate-100 dark:bg-slate-700/50 rounded-xl sm:rounded-full text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                class="ui-btn ui-btn-outline ui-btn-sm"
               >
-                <span>🔍</span> 百度一下
+                百度一下
               </a>
 
               <button
                 @click="handleAiExplain"
                  :disabled="aiLoading"
-                class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl sm:rounded-full text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                class="ui-btn ui-btn-ghost ui-btn-sm"
               >
-                <span v-if="aiLoading" class="animate-spin">⏳</span>
-                <span v-else>🤖</span>
-                {{ aiLoading ? 'AI思考中' : 'AI讲解' }}
-                <span v-if="aiRemaining !== null" class="hidden sm:inline ml-1 bg-indigo-200 dark:bg-indigo-800 text-[10px] px-1.5 py-0.5 rounded-md text-indigo-700 dark:text-indigo-300">
+                {{ aiLoading ? 'AI 思考中…' : 'AI 讲解' }}
+                <span v-if="aiRemaining !== null" class="ui-badge">
                     剩余{{ aiRemaining }}次
                 </span>
               </button>
           </div>
 
           <!-- AI Explanation Area -->
-          <div v-if="aiExplanation" class="mt-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/10 dark:to-purple-900/10 rounded-xl p-4 border border-indigo-100 dark:border-indigo-900/30 animate-fade-in-up">
-              <h4 class="font-bold text-indigo-600 dark:text-indigo-400 text-sm mb-2 flex items-center gap-2">
-                  <span>🤖</span> AI 老师的一对一辅导
+          <div v-if="aiExplanation" class="exam-ai">
+              <h4 class="exam-ai-title">
+                  AI 讲解
               </h4>
-              <div class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              <div class="exam-ai-body">
                   <MarkdownRenderer :content="aiExplanation" />
               </div>
           </div>
@@ -1490,30 +1410,28 @@ const handleAiExplain = async () => {
 
     <!-- Bottom Nav (Floating) -->
     <nav
-      class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 pb-safe print:hidden z-30"
-      style="padding-bottom: 12px; padding-bottom: max(env(safe-area-inset-bottom, 12px), 12px);"
+      class="exam-nav print:hidden"
     >
-      <div class="bg-white/85 dark:bg-slate-800/85 backdrop-blur-xl border border-white/50 dark:border-slate-700/50 p-2 rounded-[20px] flex items-center justify-between shadow-2xl shadow-slate-900/10 dark:shadow-black/30">
+      <div class="exam-nav-inner">
         <button
           @click="prev"
           :disabled="isFirst"
-          class="flex-1 py-3.5 rounded-2xl font-bold text-slate-600 dark:text-slate-300 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 disabled:opacity-30 active:scale-[0.97] transition-all text-sm flex items-center justify-center gap-2"
+          class="exam-nav-btn"
         >
           <span>←</span> 上一题
         </button>
-        <div class="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
         <button
           @click="showSheet = true"
-          class="w-14 shrink-0 py-3.5 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-2xl transition-all active:scale-[0.97]"
+          class="exam-nav-sheet"
           title="答题卡"
         >
-          <span class="text-xl">☰</span>
+          <span class="exam-nav-sheet-count">{{ stats.answered }}</span>
+          <span>答题卡</span>
         </button>
-        <div class="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
         <button
           @click="next"
           :disabled="isLast"
-          class="flex-1 py-3.5 rounded-2xl font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 disabled:opacity-30 active:scale-[0.97] transition-all text-sm flex items-center justify-center gap-2"
+          class="exam-nav-btn is-primary"
         >
           下一题 <span>→</span>
         </button>
@@ -1529,70 +1447,68 @@ const handleAiExplain = async () => {
       ></div>
 
       <!-- Drawer Content -->
-      <div class="relative w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl h-full shadow-2xl flex flex-col animate-slide-left border-l border-white/20">
-        <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+      <div class="exam-sheet">
+        <div class="exam-sheet-head">
           <div>
-              <h3 class="font-black text-xl text-slate-800 dark:text-slate-100">答题卡</h3>
-              <p class="text-xs text-slate-400 mt-1">点击题号快速跳转</p>
+              <h3 class="exam-sheet-title">答题卡</h3>
+              <p class="exam-sheet-sub">点击题号快速跳转</p>
           </div>
-          <button @click="showSheet = false" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+          <button @click="showSheet = false" class="exam-icon-btn" aria-label="关闭答题卡">
             ✕
           </button>
         </div>
 
         <!-- Stats Row -->
-        <div class="grid grid-cols-4 gap-2 p-4 bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800/50">
-           <div class="flex flex-col items-center p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
-               <span class="text-xs text-slate-400 font-bold uppercase">Total</span>
-               <span class="text-lg font-black text-slate-700 dark:text-slate-200">{{ stats.total }}</span>
+        <div class="exam-sheet-stats">
+           <div class="exam-sheet-stat">
+               <span>题目</span>
+               <strong>{{ stats.total }}</strong>
            </div>
-           <div class="flex flex-col items-center p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
-               <span class="text-xs text-emerald-500 font-bold uppercase">Right</span>
-               <span class="text-lg font-black text-emerald-500">{{ stats.correct }}</span>
+           <div class="exam-sheet-stat is-correct">
+               <span>正确</span>
+               <strong>{{ stats.correct }}</strong>
            </div>
-           <div class="flex flex-col items-center p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
-               <span class="text-xs text-rose-500 font-bold uppercase">Wrong</span>
-               <span class="text-lg font-black text-rose-500">{{ stats.wrong }}</span>
+           <div class="exam-sheet-stat is-wrong">
+               <span>错误</span>
+               <strong>{{ stats.wrong }}</strong>
            </div>
-           <div class="flex flex-col items-center p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
-               <span class="text-xs text-indigo-500 font-bold uppercase">Rate</span>
-               <span class="text-lg font-black text-indigo-500">{{ stats.rate }}%</span>
+           <div class="exam-sheet-stat">
+               <span>正确率</span>
+               <strong>{{ stats.rate }}%</strong>
            </div>
         </div>
 
         <!-- Group Selector -->
-        <div v-if="sheetGroups.length > 0" class="px-5 pb-2 overflow-x-auto flex gap-2 no-scrollbar shrink-0">
+        <div v-if="sheetGroups.length > 0" class="exam-sheet-groups">
             <button
                 v-for="g in sheetGroups"
                 :key="g.index"
                 @click="sheetPage = g.index"
-                class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
-                :class="sheetPage === g.index
-                    ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'"
+                class="exam-sheet-group"
+                :class="{ 'is-active': sheetPage === g.index }"
             >
                 {{ g.label }}
             </button>
         </div>
 
         <!-- Grid -->
-        <div class="flex-1 overflow-y-auto p-5 pt-2 scrollbar-hide">
-          <div class="grid grid-cols-5 gap-3 content-start">
+        <div class="exam-sheet-body">
+          <div class="exam-sheet-grid">
             <button
               v-for="item in visibleSheetItems"
               :key="item.realIndex"
               @click="jumpTo(item.displayIndex)"
-              class="aspect-square rounded-2xl flex items-center justify-center text-sm font-bold border-2 transition-all active:scale-90 shadow-sm"
+              class="exam-sheet-cell"
               :class="{
-                'bg-emerald-500 border-emerald-500 text-white shadow-emerald-500/30':
+                'is-correct':
                   userAnswers[questions[item.realIndex].id] &&
                   userAnswers[questions[item.realIndex].id].isCorrect,
-                'bg-rose-500 border-rose-500 text-white shadow-rose-500/30':
+                'is-wrong':
                   userAnswers[questions[item.realIndex].id] &&
                   !userAnswers[questions[item.realIndex].id].isCorrect,
-                'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:border-indigo-400':
+                'is-unanswered':
                   !userAnswers[questions[item.realIndex].id],
-                'ring-4 ring-indigo-500/20 scale-110 z-10':
+                'is-current':
                   currentIndex === item.displayIndex,
               }"
             >
@@ -1603,18 +1519,18 @@ const handleAiExplain = async () => {
         </div>
 
         <!-- Actions -->
-        <div class="p-5 border-t border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 space-y-3 pb-8">
+        <div class="exam-sheet-actions">
           <button
             @click="showExportModal = true"
-            class="w-full py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold flex items-center justify-center gap-2 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            class="ui-btn ui-btn-outline"
           >
-            <span>📤</span> 导出/打印
+            导出 / 打印
           </button>
           <button
             @click="resetProgress"
-            class="w-full py-3.5 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 font-bold flex items-center justify-center gap-2 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors"
+            class="ui-btn ui-btn-ghost exam-danger"
           >
-            <span>🗑️</span> 清空当前进度
+            清空当前进度
           </button>
         </div>
       </div>

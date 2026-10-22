@@ -69,10 +69,27 @@ async function check(name,url,{id,method='GET',body,expected=200}={}) {
   await check('admin users','/api/admin/users?limit=2',{id:admin.id});
   await check('admin exams','/api/admin/exams',{id:admin.id});
   await check('admin settings','/api/admin/settings',{id:admin.id});
+  await check('admin export credentials','/api/admin/exports?limit=2',{id:admin.id});
+ }
+ const demo=users.find(u=>u.role==='demo');
+ if(demo){
+  await check('demo cannot read export credentials','/api/admin/exports',{id:demo.id,expected:403});
+ }
+ await check('anonymous export','/api/data/export/questions',{method:'POST',body:{subject_id:subject.id,password:'AAAA-BBBB-CCCC-DDDD'},expected:401});
+ if(paid){
+  await check('export rejects wrong password','/api/data/export/questions',{id:paid.id,method:'POST',body:{subject_id:subject.id,password:'AAAA-BBBB-CCCC-DDDD'},expected:403});
  }
  await check('resource categories','/api/data/resources/categories');
  await check('resource directory','/api/data/resources/articles?limit=2');
  await check('app update','/api/app/check_update?versionCode=112');
+ const webPages=['/','/login','/register','/download','/score-query','/agreement','/privacy','/export'];
+ for(const page of webPages){
+  const response=await fetch('https://study.zhzgo.cn'+page,{signal:AbortSignal.timeout(20000)});
+  const html=await response.text();
+  const ok=response.status===200&&html.includes('id="app"');
+  results.push({name:'web '+page,status:response.status,ok});
+  if(!ok)throw new Error('Web page '+page+' failed');
+ }
  console.log(JSON.stringify({ok:true,checks:results}));
  fs.writeFileSync('/www/backup/codex/study-center-20261022/'+(live?'live-api-smoke.json':'shadow-api-smoke.json'),JSON.stringify({time:new Date().toISOString(),checks:results},null,2),{mode:0o600});
  }finally{await db.end();}

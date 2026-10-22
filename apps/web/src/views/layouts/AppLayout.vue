@@ -1,161 +1,166 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { auth } from '../../api';
 
-const router = useRouter();
 const route = useRoute();
-const isSidebarOpen = ref(window.innerWidth >= 1024); // Default open on desktop
-const isMobile = ref(window.innerWidth < 1024);
+const router = useRouter();
+const user = ref({});
+const isDark = ref(false);
+const menuOpen = ref(false);
+const sheetOpen = ref(false);
 
-// Menu Items
-const menuItems = [
-    { label: '首页', icon: '🏠', path: '/' },
-    { label: '题库', icon: '📚', path: '/library' }, // Placeholder, maybe links to anchors in home
-    { label: '学情', icon: '📊', path: '/analysis' },
-    { label: '数据', icon: '💾', path: '/data' },
+const isAdmin = computed(() => user.value.role === 'admin');
+const displayName = computed(() => user.value.nickname || user.value.username || '同学');
+const initial = computed(() => displayName.value.slice(0, 1).toUpperCase());
+const onHomeBank = computed(() => route.path === '/home' && route.hash === '#subjects');
+
+const navItems = computed(() => [
+  { label: '首页', to: '/home', icon: 'home' },
+  { label: '题库', to: '/home#subjects', icon: 'book' },
+  { label: '学情', to: '/analysis', icon: 'chart' },
+  { label: '统计', to: '/stats', icon: 'bars' },
+  { label: '数据', to: '/data', icon: 'layers' },
+]);
+
+const mobileItems = [
+  { label: '首页', to: '/home', icon: 'home' },
+  { label: '题库', to: '/home#subjects', icon: 'book' },
+  { label: '学情', to: '/analysis', icon: 'chart' },
+  { label: '统计', to: '/stats', icon: 'bars' },
 ];
 
-// Admin check
-const isAdmin = ref(false);
-
-const toggleSidebar = () => {
-    isSidebarOpen.value = !isSidebarOpen.value;
+const readUser = () => {
+  try { user.value = JSON.parse(localStorage.getItem('user') || '{}') || {}; }
+  catch { user.value = {}; }
 };
 
-const navigateTo = (path) => {
-    router.push(path);
-    if (isMobile.value) isSidebarOpen.value = false;
+const applyTheme = () => {
+  const saved = localStorage.getItem('theme');
+  const dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  isDark.value = dark;
+  document.documentElement.classList.toggle('dark', dark);
 };
 
-// Theme Toggle
-const isDark = ref(false);
 const toggleTheme = () => {
-    isDark.value = !isDark.value;
-    if (isDark.value) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-    }
+  isDark.value = !isDark.value;
+  document.documentElement.classList.toggle('dark', isDark.value);
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light');
 };
 
-onMounted(() => {
-    const userString = localStorage.getItem('user');
-    if (userString) {
-        const user = JSON.parse(userString);
-        isAdmin.value = user.role === 'admin' || user.role === 'demo';
-    }
-    
-    // Init Theme
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        isDark.value = true;
-        document.documentElement.classList.add('dark');
-    }
+const scrollHash = () => {
+  if (!route.hash) return;
+  nextTick(() => setTimeout(() => document.querySelector(route.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80));
+};
 
-    // Responsive listener
-    window.addEventListener('resize', () => {
-        const mobile = window.innerWidth < 1024;
-        if (mobile !== isMobile.value) {
-            isMobile.value = mobile;
-            isSidebarOpen.value = !mobile;
-        }
-    });
+const go = async (to) => {
+  menuOpen.value = false;
+  sheetOpen.value = false;
+  if (to === '/home#subjects') {
+    await router.push({ path: '/home', hash: '#subjects' });
+    scrollHash();
+  } else {
+    await router.push(to);
+  }
+};
 
-    if (isAdmin.value) {
-        menuItems.push({ label: '后台', icon: '⚙️', path: '/admin' });
-    }
-});
+const logout = async () => {
+  menuOpen.value = false;
+  sheetOpen.value = false;
+  if (!window.confirm('确认退出当前账号？')) return;
+  try { await auth.logout(); } catch {}
+  localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  router.push('/login');
+};
+
+onMounted(() => { readUser(); applyTheme(); scrollHash(); });
+watch(() => route.fullPath, () => { readUser(); menuOpen.value = false; sheetOpen.value = false; scrollHash(); });
 </script>
 
 <template>
-    <div class="h-screen w-full flex bg-background-soft transition-colors duration-300">
-        
-        <!-- Mobile Overlay -->
-        <div v-if="isMobile && isSidebarOpen" 
-             class="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm transition-opacity"
-             @click="isSidebarOpen = false">
+  <div class="web-shell">
+    <header class="web-topbar">
+      <div class="web-topbar-inner">
+        <RouterLink to="/home" class="web-brand" aria-label="烁学首页">
+          <span class="web-brand-mark">烁</span>
+          <span>烁学</span>
+        </RouterLink>
+
+        <nav class="web-nav" aria-label="主导航">
+          <button v-for="item in navItems" :key="item.to" class="web-nav-link"
+            :class="{ 'is-active': item.to === '/home#subjects' ? onHomeBank : item.to === '/home' ? (route.path === '/home' && route.hash !== '#subjects') : route.path.startsWith(item.to) }"
+            @click="go(item.to)">{{ item.label }}</button>
+        </nav>
+
+        <div class="web-actions">
+          <RouterLink to="/export" class="ui-btn ui-btn-ghost ui-btn-sm hide-mobile">导出题库</RouterLink>
+          <button class="web-icon-btn" type="button" :aria-label="isDark ? '切换浅色模式' : '切换深色模式'" @click="toggleTheme">
+            <svg v-if="isDark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg>
+            <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.5 14.1A8.5 8.5 0 0 1 9.9 3.5 8.5 8.5 0 1 0 20.5 14.1Z"/></svg>
+          </button>
+          <div class="relative">
+            <button class="web-avatar" type="button" @click="menuOpen = !menuOpen" :aria-expanded="menuOpen" :aria-label="`${displayName} 的账户菜单`">{{ initial }}</button>
+            <div v-if="menuOpen" class="ui-dropdown" @click.stop>
+              <div class="px-3 pb-2 pt-1">
+                <p class="text-[13px] font-semibold" style="color:var(--text-main)">{{ displayName }}</p>
+                <p class="ui-small ui-faint">{{ isAdmin ? '管理员账户' : '学习账户' }}</p>
+              </div>
+              <button @click="go('/export')">导出题库</button>
+              <button @click="go('/score-query')">联考成绩查询</button>
+              <button @click="go('/download')">下载 Android App</button>
+              <button v-if="isAdmin" @click="go('/admin')">管理后台</button>
+              <div class="ui-divider my-1"></div>
+              <button @click="toggleTheme">{{ isDark ? '切换到浅色模式' : '切换到深色模式' }}</button>
+              <button class="!text-rose-500" @click="logout">退出登录</button>
+            </div>
+          </div>
         </div>
+      </div>
+    </header>
 
-        <!-- Sidebar -->
-        <aside 
-            class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-background border-r border-border transform transition-all duration-300 ease-spring flex flex-col"
-            :class="[
-                isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:w-0 lg:overflow-hidden lg:border-none'
-            ]"
-        >
-            <!-- Logo Section -->
-            <div class="h-16 flex items-center px-6 border-b border-border/50">
-                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold mr-3 shadow-md shadow-primary/30">
-                    S
-                </div>
-                <span class="text-lg font-bold text-heading tracking-tight">刷题中心</span>
-            </div>
+    <main class="web-main"><slot /></main>
 
-            <!-- Navigation -->
-            <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-1">
-                <button 
-                    v-for="item in menuItems" 
-                    :key="item.path"
-                    @click="navigateTo(item.path)"
-                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group"
-                    :class="route.path === item.path ? 'bg-primary/10 text-primary font-bold' : 'text-text hover:bg-background-mute hover:text-heading'"
-                >
-                    <span class="text-xl transition-transform group-hover:scale-110">{{ item.icon }}</span>
-                    <span class="text-sm">{{ item.label }}</span>
-                </button>
-            </nav>
+    <nav class="web-mobile-nav" aria-label="移动端主导航">
+      <button v-for="item in mobileItems" :key="item.to" class="web-mobile-link"
+        :class="{ 'is-active': item.to === '/home#subjects' ? onHomeBank : item.to === '/home' ? (route.path === '/home' && route.hash !== '#subjects') : route.path.startsWith(item.to) }"
+        @click="go(item.to)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path v-if="item.icon === 'home'" d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>
+          <path v-else-if="item.icon === 'book'" d="M4 4h5a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H4zM20 4h-5a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h5z"/>
+          <path v-else-if="item.icon === 'chart'" d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>
+          <path v-else d="M4 19V9M10 19V5M16 19v-6M22 19H2"/>
+        </svg>
+        <span>{{ item.label }}</span>
+      </button>
+      <button class="web-mobile-link" type="button" @click="sheetOpen = true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.1.36.32.7.6 1 .3.26.7.4 1.1.4h.09v4h-.09a1.7 1.7 0 0 0-1.7.6Z"/></svg>
+        <span>更多</span>
+      </button>
+    </nav>
 
-            <!-- Bottom Actions -->
-            <div class="p-4 border-t border-border/50">
-                <button @click="toggleTheme" class="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-background-mute transition-colors text-text">
-                    <span class="text-sm font-medium">Dark Mode</span>
-                    <div class="w-10 h-6 rounded-full p-1 transition-colors duration-300 relative"
-                         :class="isDark ? 'bg-primary' : 'bg-slate-300'">
-                        <div class="w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-300"
-                             :class="isDark ? 'translate-x-4' : 'translate-x-0'"></div>
-                    </div>
-                </button>
-            </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
-            
-            <!-- Top Header -->
-            <header class="h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-md border-b border-border sticky top-0 z-30">
-                <div class="flex items-center gap-4">
-                    <button @click="toggleSidebar" class="p-2 rounded-lg hover:bg-background-mute text-text transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                    <!-- Breadcrumbs or Title could go here -->
-                    <h1 class="text-lg font-bold text-heading lg:hidden">刷题中心</h1>
-                </div>
-
-                <div class="flex items-center gap-3">
-                    <!-- User Avatar or Profile -->
-                    <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 flex items-center justify-center font-bold text-xs">
-                        U
-                    </div>
-                </div>
-            </header>
-
-            <!-- Page Content (Scrollable) -->
-            <div class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth will-change-transform">
-                <div class="max-w-7xl mx-auto min-h-full animate-enter-slide-up">
-                    <slot></slot>
-                </div>
-            </div>
-
-        </main>
+    <div v-if="sheetOpen" class="ui-sheet-backdrop" @click="sheetOpen = false"></div>
+    <div v-if="sheetOpen" class="ui-sheet" role="dialog" aria-label="更多菜单">
+      <div class="ui-sheet-handle"></div>
+      <div class="ui-row pb-3">
+        <span class="web-avatar">{{ initial }}</span>
+        <div><p class="font-semibold" style="color:var(--text-main)">{{ displayName }}</p><p class="ui-small ui-faint">{{ isAdmin ? '管理员账户' : '学习账户' }}</p></div>
+      </div>
+      <div class="ui-list-card ui-card">
+        <button class="ui-row-button" @click="go('/data')"><span class="ui-grow">学习数据</span><span class="ui-faint">›</span></button>
+        <button class="ui-row-button" @click="go('/export')"><span class="ui-grow">导出题库</span><span class="ui-faint">›</span></button>
+        <button class="ui-row-button" @click="go('/score-query')"><span class="ui-grow">成绩查询</span><span class="ui-faint">›</span></button>
+        <button class="ui-row-button" @click="go('/download')"><span class="ui-grow">下载 App</span><span class="ui-faint">›</span></button>
+        <button v-if="isAdmin" class="ui-row-button" @click="go('/admin')"><span class="ui-grow">管理后台</span><span class="ui-faint">›</span></button>
+        <button class="ui-row-button" @click="toggleTheme"><span class="ui-grow">{{ isDark ? '浅色模式' : '深色模式' }}</span><span class="ui-faint">切换</span></button>
+      </div>
+      <button class="ui-btn ui-btn-outline w-full mt-3" style="color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--border))" @click="logout">退出登录</button>
     </div>
+  </div>
 </template>
 
 <style scoped>
-.ease-spring {
-    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+.relative { position: relative; }
+@media (max-width: 1023px) { .hide-mobile { display: none; } }
 </style>

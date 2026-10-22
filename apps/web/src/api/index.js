@@ -151,6 +151,7 @@ export const data = {
     // AI Tutor & Analysis
     getAiExplanation: (data) => api.post('/data/ai-explain', data),
     getAiAnalysis: (data) => api.post('/data/ai-analysis', data),
+    exportQuestions: (payload) => api.post('/data/export/questions', payload, { responseType: 'blob' }),
 };
 
 export const admin = {
@@ -261,6 +262,11 @@ export const admin = {
     // Access Control Management
     getAccessControls: () => api.get('/admin/access-control'),
     updateAccessControlBatch: (data) => api.post('/admin/access-control/batch', data),
+
+    // Question export authorization
+    getExportCredentials: (params) => api.get('/admin/exports', { params }),
+    generateExportPassword: (userId) => api.post(`/admin/exports/${userId}`),
+    revokeExportPassword: (userId) => api.delete(`/admin/exports/${userId}`),
 };
 
 export const publicApi = {

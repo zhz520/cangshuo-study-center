@@ -728,7 +728,7 @@ const handleExport = async () => {
         if (major) scopeDesc += major.name + ' ';
     }
     if (filters.subject_id) {
-        const subject = subjects.value.find(s => s.id == filters.subject_id);
+        const subject = filterSubjects.value.find(s => s.id == filters.subject_id);
         if (subject) scopeDesc += subject.name + ' ';
     }
     if (filters.type) scopeDesc += getTypeName(filters.type) + ' ';
@@ -1073,6 +1073,7 @@ const handleExport = async () => {
                                 <option value="judge">判断题</option>
                                 <option value="fill">填空题</option>
                                 <option value="sort">排序题</option>
+                                <option value="material">材料题</option>
                             </select>
                         </div>
                         <div class="space-y-1.5 flex flex-col justify-end pb-1.5 flex flex-row items-center gap-2">

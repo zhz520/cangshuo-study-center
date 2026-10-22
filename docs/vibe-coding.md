@@ -68,7 +68,8 @@ archive/
 | 数据库 | MySQL `study_center`，普通题和试卷题已 AES-256-GCM 加密 |
 | 题目规模 | 普通题 133,444 道，试卷题 834 道 |
 | 搜索 | `question_search_tokens` 盲索引，约 16,995,888 token |
-| 自动化 | 后端 35、Web 3、Android JUnit 16、正式接口 40 项通过 |
+| 自动化 | 后端 44、Web 3、Android JUnit 16、正式接口 40 项及导出/页面检查通过 |
+| 题库导出 | 管理员按账户生成 30 天随机密码；登录 + 密码 + 服务端会员/专业范围三重校验，CSV 带审计 |
 | APK | 调试包 `artifacts/android/app-debug-1.1.2-20261022.apk`；签名快照 `app-release-1.1.2-20261022-2028.apk` |
 
 当前没有连接 Android 设备，未完成真机、TalkBack、不同 ROM 和签名正式发布验收。不要把调试包描述成正式线上版本。
@@ -186,6 +187,14 @@ Set-Location apps/android
 顺序：停接口 → 事务写入和指纹核验 → 覆盖代码/Web → 安装私有 `.env` → `setsid` 启动 → Nginx 检查 → 正式 HTTPS 回归。
 
 加密后回滚不能只回退代码；必须用切换前数据库备份、对应代码和正确密钥。不要在生产库手工解密或重新写明文。
+
+## 题库导出文件
+
+- apps/server/routes/exports.js：网页端按科目导出。
+- apps/server/services/questionExport.js：随机密码、bcrypt、CSV 转义。
+- apps/server/routes/admin_new/export_credentials.js：管理员生成、查看和撤销。
+- apps/web/src/views/ExportView.vue、apps/web/src/views/admin/ExportAuthorization.vue：导出与授权界面。
+- apps/server/tests/question-export-routes.test.js：路由级授权、过期、审计和演示角色测试。
 
 ## 当前待办
 

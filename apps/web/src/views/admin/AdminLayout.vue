@@ -1,185 +1,143 @@
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 
 const router = useRouter();
-const showSidebar = ref(false);
+const route = useRoute();
+const sidebarOpen = ref(false);
 const confirmDialog = ref(null);
+const user = ref({});
+const isDark = ref(false);
+
+const navGroups = [
+  { label: '概览', items: [{ label: '仪表盘', to: '/admin' }] },
+  { label: '内容', items: [
+    { label: '用户与权限', to: '/admin/users' },
+    { label: '题库管理', to: '/admin/questions' },
+    { label: '题库访问控制', to: '/admin/access-control' },
+    { label: '导出授权', to: '/admin/exports' },
+    { label: '考试系统', to: '/admin/exams' },
+    { label: '题目报错', to: '/admin/reports' },
+    { label: '知识结构', to: '/admin/structure' },
+  ] },
+  { label: '资源与运营', items: [
+    { label: '资源文章', to: '/admin/articles' },
+    { label: '评论管理', to: '/admin/comments' },
+    { label: '订阅卡密', to: '/admin/cards' },
+    { label: '课程表', to: '/admin/schedule' },
+    { label: 'App 版本', to: '/admin/app-update' },
+    { label: '系统设置', to: '/admin/settings' },
+  ] },
+];
+const displayName = computed(() => user.value.nickname || user.value.username || '管理员');
+const initial = computed(() => displayName.value.slice(0, 1).toUpperCase());
+
+const syncTheme = () => {
+  const saved = localStorage.getItem('theme');
+  isDark.value = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.classList.toggle('dark', isDark.value);
+};
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value;
+  document.documentElement.classList.toggle('dark', isDark.value);
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light');
+};
 
 const logout = async () => {
-  const confirmed = await confirmDialog.value.confirm({
-    title: "确认退出",
-    message: "您确定要安全退出管理后台吗？",
-    confirmText: "退出",
-    cancelText: "取消",
-    type: "danger"
-  });
-
-  if (confirmed) {
-    try {
-      const { auth } = await import('../../api');
-      await auth.logout();
-    } catch (_) {}
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    router.push('/login');
-  }
+  const confirmed = confirmDialog.value ? await confirmDialog.value.confirm({
+    title: '退出管理后台', message: '确认退出当前账号？', confirmText: '退出', cancelText: '取消', type: 'danger',
+  }) : window.confirm('确认退出当前账号？');
+  if (!confirmed) return;
+  try { const { auth } = await import('../../api'); await auth.logout(); } catch {}
+  localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  router.push('/login');
 };
 
-const toggleSidebar = () => {
-  showSidebar.value = !showSidebar.value;
-};
+onMounted(() => {
+  try { user.value = JSON.parse(localStorage.getItem('user') || '{}') || {}; } catch {}
+  syncTheme();
+});
 </script>
 
 <template>
-  <div class="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
-    <!-- Background Blobs -->
-    <div class="absolute top-0 left-0 w-full h-full z-0 pointer-events-none overflow-hidden">
-        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/5 rounded-full blur-[100px] animate-pulse-slow"></div>
-        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/5 rounded-full blur-[100px] animate-pulse-slow" style="animation-delay: 2s"></div>
-    </div>
-
-    <!-- Sidebar Backdrop (Mobile Only) -->
-    <div 
-      v-if="showSidebar" 
-      @click="showSidebar = false"
-      class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 lg:hidden transition-opacity duration-300"
-    ></div>
-
-    <!-- Sidebar -->
-    <aside 
-      class="fixed inset-y-0 left-0 w-72 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 lg:relative lg:translate-x-0 lg:shadow-none flex flex-col border-r border-slate-200/50 dark:border-slate-700/50"
-      :class="showSidebar ? 'translate-x-0' : '-translate-x-full'"
-    >
-      <div class="p-8 relative">
-        <router-link @click="showSidebar = false" to="/admin" class="block group">
-          <h1 class="text-2xl font-black text-slate-800 dark:text-slate-100 italic tracking-tighter group-hover:scale-105 transition-transform origin-left">STUDY<span class="text-indigo-500">.</span>ADMIN</h1>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 group-hover:text-indigo-500 transition-colors">Management Portal</p>
-        </router-link>
-        
-        <!-- Close button for mobile -->
-        <button 
-          @click="showSidebar = false"
-          class="lg:hidden absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-        >
-          ✕
-        </button>
-      </div>
-      
-      <nav class="flex-1 px-4 py-2 space-y-2 overflow-y-auto">
-        <router-link @click="showSidebar = false" to="/admin" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" exact-active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">📊</span> 
-          <span>仪表盘概览</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/users" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">👥</span> 
-          <span>用户权限管理</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/questions" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">📚</span> 
-          <span>核心题库管理</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/access-control" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">🔐</span> 
-          <span>题库访问控制</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/exams" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">📝</span> 
-          <span>考试系统管理</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/reports" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-rose-600 dark:hover:text-rose-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold shadow-sm ring-1 ring-rose-100 dark:ring-rose-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">🚨</span> 
-          <span>题目报错处理</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/structure" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">🏗️</span> 
-          <span>知识结构管理</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/settings" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">⚙️</span> 
-          <span>系统策略设置</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/articles" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">📰</span> 
-          <span>资源文章管理</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/comments" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">💬</span> 
-          <span>评论弹幕管理</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/cards" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">💳</span> 
-          <span>订阅卡密管理</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/app-update" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">📱</span> 
-          <span>App版本管理</span>
-        </router-link>
-        <router-link @click="showSidebar = false" to="/admin/schedule" class="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700" active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30">
-          <span class="text-xl group-hover:scale-110 transition-transform duration-300">📅</span> 
-          <span>课程表管理</span>
-        </router-link>
+  <div class="admin-shell">
+    <div v-if="sidebarOpen" class="admin-backdrop" @click="sidebarOpen = false"></div>
+    <aside class="admin-sidebar" :class="{ 'is-open': sidebarOpen }">
+      <RouterLink to="/admin" class="admin-brand" @click="sidebarOpen = false">
+        <span class="web-brand-mark">烁</span>
+        <span><strong>烁学</strong><small>管理后台</small></span>
+      </RouterLink>
+      <nav class="admin-nav" aria-label="后台导航">
+        <section v-for="group in navGroups" :key="group.label">
+          <p class="admin-nav-label">{{ group.label }}</p>
+          <RouterLink v-for="item in group.items" :key="item.to" :to="item.to" class="admin-nav-link"
+            :class="{ 'is-active': item.to === '/admin' ? route.path === '/admin' : route.path.startsWith(item.to) }"
+            @click="sidebarOpen = false"><span class="admin-nav-line"></span>{{ item.label }}</RouterLink>
+        </section>
       </nav>
-
-      <div class="p-6 border-t border-slate-200/50 dark:border-slate-700/50 space-y-3 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
-        <button @click="router.push('/')" class="w-full flex items-center justify-center gap-2 py-3.5 text-xs font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors bg-white dark:bg-slate-700/50 rounded-2xl border border-slate-200 dark:border-slate-600 hover:border-indigo-200 dark:hover:border-indigo-500/30 shadow-sm hover:shadow-md active:scale-95 group">
-          <span class="group-hover:-translate-x-1 transition-transform">←</span> 返回学习大厅
-        </button>
-        <button @click="logout" class="w-full py-4 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl text-xs font-black hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 group">
-          <span>安全退出</span>
-          <span class="group-hover:translate-x-1 transition-transform">→</span>
-        </button>
+      <div class="admin-sidebar-foot">
+        <button class="admin-foot-link" @click="router.push('/home')">返回学习首页</button>
+        <button class="admin-foot-link" @click="toggleTheme">{{ isDark ? '浅色模式' : '深色模式' }}</button>
+        <button class="admin-foot-link danger" @click="logout">退出登录</button>
       </div>
     </aside>
 
-    <!-- Main Content -->
-    <div class="flex-1 flex flex-col h-screen overflow-hidden relative z-10">
-      <!-- Top navbar for mobile -->
-      <header class="lg:hidden h-16 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50 px-4 flex items-center justify-between flex-shrink-0 z-20 shadow-sm">
-        <button @click="toggleSidebar" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 active:scale-95 transition-transform">
-          <span class="text-xl">☰</span>
-        </button>
-        <h2 class="font-black text-slate-800 dark:text-slate-100 text-sm tracking-tighter uppercase">Admin Panel</h2>
-        <div class="w-10"></div> <!-- Placeholder for balance -->
+    <section class="admin-main">
+      <header class="admin-topbar">
+        <button class="admin-menu-btn" type="button" aria-label="打开后台导航" @click="sidebarOpen = true"><span></span><span></span><span></span></button>
+        <div class="admin-topbar-title"><strong>管理后台</strong><span>烁学运营与题库管理</span></div>
+        <div class="admin-user"><span class="web-avatar">{{ initial }}</span><span class="admin-user-name">{{ displayName }}</span></div>
       </header>
-
-      <main class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 relative scroll-smooth">
+      <main class="admin-content">
         <router-view v-slot="{ Component }">
-          <transition name="fade-slide" mode="out-in">
-            <component :is="Component" />
-          </transition>
+          <transition name="page-fade" mode="out-in"><component :is="Component" /></transition>
         </router-view>
       </main>
-    </div>
-
+    </section>
     <ConfirmDialog ref="confirmDialog" />
   </div>
 </template>
 
 <style scoped>
-@keyframes pulse-slow {
-    0%, 100% { opacity: 0.3; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.1); }
-}
-.animate-pulse-slow {
-    animation: pulse-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Page Transition */
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
+.admin-shell { min-height: 100vh; display: grid; grid-template-columns: 232px minmax(0,1fr); background: var(--bg-body); color: var(--text-main); }
+.admin-sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg-card); border-right: 1px solid var(--border); z-index: 50; }
+.admin-brand { display: flex; align-items: center; gap: 10px; height: 66px; padding: 0 18px; border-bottom: 1px solid var(--border); }
+.admin-brand > span:last-child { display: flex; flex-direction: column; gap: 1px; }
+.admin-brand strong { font-size: 14px; }
+.admin-brand small { font-size: 10px; color: var(--text-quote); }
+.admin-nav { flex: 1; overflow-y: auto; padding: 18px 10px; }
+.admin-nav section + section { margin-top: 18px; }
+.admin-nav-label { padding: 0 10px 7px; font-size: 10px; font-weight: 600; color: var(--text-quote); letter-spacing: .08em; }
+.admin-nav-link { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 8px; color: var(--text-sub); font-size: 12px; transition: background .15s ease, color .15s ease; }
+.admin-nav-link:hover { background: var(--bg-card-highlight); color: var(--text-main); }
+.admin-nav-link.is-active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.admin-nav-line { width: 3px; height: 14px; border-radius: 2px; background: transparent; }
+.admin-nav-link.is-active .admin-nav-line { background: var(--primary); }
+.admin-sidebar-foot { border-top: 1px solid var(--border); padding: 10px; display: flex; flex-direction: column; gap: 2px; }
+.admin-foot-link { min-height: 34px; border-radius: 7px; padding: 0 10px; text-align: left; font-size: 12px; color: var(--text-sub); }
+.admin-foot-link:hover { background: var(--bg-card-highlight); color: var(--text-main); }
+.admin-foot-link.danger { color: var(--danger); }
+.admin-main { min-width: 0; }
+.admin-topbar { height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 24px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--bg-body) 94%, transparent); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 20; }
+.admin-topbar-title { display: flex; flex-direction: column; gap: 2px; }
+.admin-topbar-title strong { font-size: 14px; }
+.admin-topbar-title span { font-size: 10px; color: var(--text-quote); }
+.admin-user { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-sub); }
+.admin-menu-btn { display: none; width: 34px; height: 34px; flex-direction: column; justify-content: center; gap: 4px; padding: 0 8px; border-radius: 8px; }
+.admin-menu-btn span { height: 1px; background: var(--text-sub); }
+.admin-content { padding: 24px; width: min(1320px, 100%); margin: 0 auto; }
+.admin-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.28); z-index: 45; }
+@media (max-width: 900px) {
+  .admin-shell { grid-template-columns: 1fr; }
+  .admin-sidebar { position: fixed; left: 0; top: 0; width: 244px; transform: translateX(-100%); transition: transform .2s ease; }
+  .admin-sidebar.is-open { transform: translateX(0); }
+  .admin-backdrop { display: block; }
+  .admin-menu-btn { display: flex; }
+  .admin-content { padding: 16px; }
+  .admin-user-name { display: none; }
 }
 </style>

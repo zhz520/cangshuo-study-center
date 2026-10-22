@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './style.css'
 import './assets/theme.css'
+import './assets/study-ui.css'
 import App from './App.vue'
 import router from './router'
 import 'nprogress/nprogress.css' // Global Progress Bar

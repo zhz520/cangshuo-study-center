@@ -175,11 +175,11 @@ const initRadarChart = () => {
                 name: '能力维度',
                 symbol: 'circle',
                 symbolSize: 6,
-                itemStyle: { color: '#6366f1' },
+                itemStyle: { color: '#2563eb' },
                 areaStyle: {
                     color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: 'rgba(99, 102, 241, 0.5)' },
-                        { offset: 1, color: 'rgba(99, 102, 241, 0.1)' }
+                        { offset: 0, color: 'rgba(37, 99, 235, 0.22)' },
+                        { offset: 1, color: 'rgba(37, 99, 235, 0.04)' }
                     ])
                 },
                 lineStyle: { width: 3 }
@@ -220,12 +220,12 @@ const initHeatmapChart = () => {
             type: 'bar',
             itemStyle: { 
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: '#ec4899' },
-                    { offset: 1, color: '#f43f5e' }
+                    { offset: 0, color: '#2563eb' },
+                    { offset: 1, color: '#60a5fa' }
                 ]),
                 borderRadius: [4, 4, 0, 0]
             },
-            label: { show: true, position: 'top', color: '#f43f5e', fontWeight: 'bold' }
+            label: { show: true, position: 'top', color: '#2563eb', fontWeight: 'bold' }
         }]
     };
     heatmapChartInstance.setOption(option);
@@ -252,7 +252,7 @@ const initSubjectChart = () => {
              label: { show: false, position: 'center' },
              labelLine: { show: false },
              data: pieData,
-             color: ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1']
+             color: ['#2563eb', '#0ea5e9', '#16a34a', '#d97706', '#64748b', '#94a3b8']
          }]
      };
      subjectChartInstance.setOption(option);
@@ -335,213 +335,53 @@ const overallAccuracy = computed(() => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24 transition-colors duration-500">
-        <!-- Top Nav -->
-        <header class="glass-nav px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-            <div class="flex items-center gap-3">
-                <button @click="router.back()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all">
-                    <span class="text-xl">←</span>
-                </button>
-                <h1 class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                    <span class="text-2xl">🧠</span> 学习诊断报告
-                </h1>
-            </div>
-            
-            <div class="flex items-center gap-2" v-if="!loading && detailedStats">
-                <span class="hidden md:inline-flex items-center justify-center px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-bold rounded-lg text-sm">
-                    🔥 连击: {{ detailedStats.streak }} 天
-                </span>
-            </div>
-        </header>
+  <div class="ui-page analysis-page">
+    <header class="ui-page-head">
+      <div><p class="ui-eyebrow">学习诊断</p><h1 class="ui-title">学习诊断报告</h1><p class="ui-subtitle">基于已记录的学习行为和作答结果。</p></div>
+      <span v-if="detailedStats" class="ui-badge">连续 {{ detailedStats.streak || 0 }} 天</span>
+      <button class="ui-btn ui-btn-outline ui-btn-sm" @click="router.push('/stats')">返回统计</button>
+    </header>
 
-        <div class="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-            
-            <div v-if="loading" class="py-32 flex flex-col items-center justify-center space-y-4">
-                 <div class="w-12 h-12 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin"></div>
-                 <p class="text-slate-400 font-bold text-sm tracking-widest animate-pulse">正在生成报告...</p>
-            </div>
+    <div v-if="loading" class="ui-card ui-loading"><span class="ui-spinner mx-auto"></span><p class="mt-3">正在加载诊断数据</p></div>
+    <template v-else>
+      <section class="ui-grid ui-grid-4 diagnosis-metrics">
+        <div class="ui-card ui-card-pad ui-metric"><span class="ui-metric-value">{{ overallTotalQuestions }}</span><span class="ui-metric-label">累计作答</span></div>
+        <div class="ui-card ui-card-pad ui-metric"><span class="ui-metric-value">{{ overallAccuracy }}%</span><span class="ui-metric-label">综合正确率</span></div>
+        <div class="ui-card ui-card-pad ui-metric"><span class="ui-metric-value">{{ detailedStats?.subjectStats?.length || 0 }}</span><span class="ui-metric-label">涉及科目</span></div>
+        <div class="ui-card ui-card-pad ui-metric"><span class="ui-metric-value">{{ detailedStats?.typeStats?.length || 0 }}</span><span class="ui-metric-label">涉及题型</span></div>
+      </section>
 
-            <template v-else>
-                
-                <!-- Section 1: Top Glance & AI -->
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in-up">
-                    
-                    <!-- Left: Quick Stats -->
-                    <div class="lg:col-span-4 flex flex-col gap-6">
-                        <div class="glass-card p-6 flex items-center justify-between relative overflow-hidden group">
-                             <div class="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
-                             <div>
-                                 <h3 class="text-slate-500 dark:text-slate-400 font-bold text-sm uppercase tracking-wide">总刷题量</h3>
-                                 <div class="text-4xl font-black text-slate-800 dark:text-white mt-1">{{ overallTotalQuestions }}</div>
-                             </div>
-                             <div class="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-500 text-2xl shadow-inner">
-                                📝
-                             </div>
-                        </div>
-                        <div class="glass-card p-6 flex items-center justify-between relative overflow-hidden group">
-                             <div class="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
-                             <div>
-                                 <h3 class="text-slate-500 dark:text-slate-400 font-bold text-sm uppercase tracking-wide">综合正确率</h3>
-                                 <div class="text-4xl font-black text-slate-800 dark:text-white mt-1 flex items-baseline gap-1">
-                                     {{ overallAccuracy }}<span class="text-xl text-slate-400">%</span>
-                                 </div>
-                             </div>
-                             <div class="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-500 text-2xl shadow-inner">
-                                🎯
-                             </div>
-                        </div>
-                        
-                        <!-- 7 Days Activity Heatmap -->
-                        <div class="glass-card p-5 h-full flex flex-col">
-                            <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 mb-2">
-                                <span class="w-2 h-5 bg-pink-500 rounded-full"></span> 活跃图谱 (近7天)
-                            </h3>
-                            <div class="flex-grow min-h-[150px] w-full" ref="heatmapChartRef"></div>
-                        </div>
-                    </div>
-
-                    <!-- Right: AI Deep Analysis -->
-                    <div class="lg:col-span-8 relative">
-                        <!-- Animated Gradient Background -->
-                        <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl opacity-100 blur-[2px] shadow-2xl shadow-indigo-500/20"></div>
-                        
-                        <div class="relative h-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-[22px] p-1 m-[2px]">
-                            <div class="h-full bg-slate-50 dark:bg-slate-800 rounded-[20px] p-6 lg:p-8 flex flex-col">
-                                <div class="flex items-center justify-between mb-6">
-                                    <h3 class="font-black text-xl text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center gap-2">
-                                        <span class="text-2xl animate-pulse">✨</span> AI 深度学情洞察
-                                    </h3>
-                                    
-                                    <button 
-                                        @click="generateAiAnalysis"
-                                        :disabled="isGeneratingAi"
-                                        class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold text-sm shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        <div v-if="isGeneratingAi" class="flex items-center gap-2">
-                                           <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                           让AI思考中...
-                                        </div>
-                                        <span v-else>生成深度报告</span>
-                                    </button>
-                                </div>
-
-                                <div class="flex-grow overflow-y-auto custom-scrollbar pr-2 relative">
-                                    <div v-if="aiAnalysisResult" class="ai-markdown prose prose-slate dark:prose-invert max-w-none text-[15px] leading-relaxed" v-html="sanitizeHtml(aiAnalysisResult)"></div>
-                                    
-                                    <div v-else-if="overallTotalQuestions > 0" class="h-full flex flex-col items-center justify-center text-slate-400 py-10">
-                                        <div class="text-6xl mb-4 opacity-50 grayscale">🤖</div>
-                                        <p class="font-bold">点击右侧按钮，让 AI 为你生成专属学习建议</p>
-                                        <p class="text-xs mt-2">基于 DeepSeek 深度思考模型分析</p>
-                                    </div>
-
-                                    <div v-else class="h-full flex flex-col items-center justify-center text-slate-400 py-10 text-center">
-                                        <div class="text-6xl mb-4 opacity-50 grayscale">📂</div>
-                                        <p class="font-bold text-slate-500">数据不足</p>
-                                        <p class="text-sm mt-1">你的刷题量比较少，快去刷几道题再来看看吧~</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 2: Distribution Stats -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in-up" style="animation-delay: 100ms;">
-                    
-                    <div class="glass-card p-6">
-                        <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 mb-4">
-                             <span class="w-2 h-5 bg-blue-500 rounded-full"></span> 科目偏好分析
-                        </h3>
-                        <div v-if="!detailedStats?.subjectStats?.length" class="h-[250px] flex items-center justify-center text-slate-400">暂无数据</div>
-                        <div v-else class="w-full h-[250px]" ref="subjectChartRef"></div>
-                    </div>
-
-                    <div class="glass-card p-6">
-                        <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 mb-4">
-                             <span class="w-2 h-5 bg-emerald-500 rounded-full"></span> 题型掌握度
-                        </h3>
-                        <div v-if="!detailedStats?.typeStats?.length" class="h-[250px] flex items-center justify-center text-slate-400">暂无数据</div>
-                        <div v-else class="w-full h-[250px]" ref="typeChartRef"></div>
-                    </div>
-
-                </div>
-
-                <!-- Section 3: Subject Specific Details (Old Analysis View Features) -->
-                <div class="pt-8 animate-fade-in-up" style="animation-delay: 200ms;">
-                    <div class="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
-                        <h2 class="text-2xl font-black text-slate-800 dark:text-white">专项能力拆解</h2>
-                        <div class="flex gap-2">
-                            <select v-model="selectedMajor" class="bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 shadow-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all cursor-pointer">
-                                <option value="" disabled>选择专业</option>
-                                <option v-for="m in majors" :key="m.id" :value="m.id">{{ m.name }}</option>
-                            </select>
-                            <select v-model="selectedSubject" class="bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 shadow-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all cursor-pointer">
-                                <option value="" disabled>选择科目</option>
-                                <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        
-                        <!-- Radar -->
-                        <div class="glass-card p-6 flex flex-col items-center">
-                            <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 mb-2 w-full">
-                                <span class="w-2 h-5 bg-indigo-500 rounded-full"></span> 知识点雷达图
-                            </h3>
-                            <div v-if="!analysisData || !analysisData.radar || analysisData.radar.indicator.length < 3" class="flex-grow w-full flex items-center justify-center text-slate-400 text-sm min-h-[300px]">
-                                数据不足，无法生成雷达图 (需至少涉猎3个知识点)
-                            </div>
-                            <div v-else ref="radarChartRef" class="w-full h-[350px]"></div>
-                        </div>
-
-                        <!-- Top Weaknesses -->
-                        <div class="glass-card p-6 flex flex-col max-h-[450px]">
-                            <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between mb-4">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-2 h-5 bg-rose-500 rounded-full"></span> 急需攻克知识点
-                                </div>
-                                <button v-if="analysisData && analysisData.weakTags?.length" @click="router.push(`/exam/${selectedSubject}?mode=wrong`)" class="text-xs font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
-                                    去复习错题 →
-                                </button>
-                            </h3>
-
-                            <div v-if="!analysisData || !analysisData.weakTags?.length" class="flex-grow flex items-center justify-center py-10 text-center text-slate-400 text-sm">
-                                🎉 太棒了，当前科目暂无明显弱项！
-                            </div>
-
-                            <div v-else class="flex-grow overflow-y-auto custom-scrollbar space-y-2.5 pr-2 pb-2">
-                                <div v-for="(item, idx) in analysisData.weakTags" :key="idx" 
-                                    class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 transition-all hover:border-slate-200 dark:hover:border-slate-700 group">
-                                    <div class="flex items-center gap-3">
-                                        <span class="text-xs font-black w-6 h-6 rounded-lg flex items-center justify-center bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm group-hover:scale-110 transition-transform">
-                                            {{ idx + 1 }}
-                                        </span>
-                                        <span class="font-bold text-sm text-slate-700 dark:text-slate-200 truncate max-w-[150px] md:max-w-xs" :title="item.tag">
-                                            {{ item.tag }}
-                                        </span>
-                                    </div>
-                                    <div class="text-right flex flex-col items-end">
-                                        <div class="text-xs font-bold px-2 py-0.5 rounded" :class="getAccuracyColor(item.accuracy)">
-                                            正确率 {{ item.accuracy }}% 
-                                        </div>
-                                        <div class="text-[10px] text-slate-400 mt-1 font-medium">涉及 {{ item.total }} 题</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
-            </template>
+      <section class="diagnosis-layout">
+        <div class="ui-card ui-card-pad diagnosis-activity"><div class="ui-row-between"><div><h2 class="ui-section-title">近 7 天活跃</h2><p class="ui-small ui-muted">每天的作答数量</p></div></div><div ref="heatmapChartRef" class="diagnosis-chart chart-activity"></div></div>
+        <div class="ui-card ui-card-pad diagnosis-ai">
+          <div class="ui-row-between"><div><h2 class="ui-section-title">AI 学情洞察</h2><p class="ui-small ui-muted">按需生成，不自动消耗额度</p></div><button class="ui-btn ui-btn-dark ui-btn-sm" :disabled="isGeneratingAi" @click="generateAiAnalysis">{{ isGeneratingAi ? '正在分析…' : aiAnalysisResult ? '重新查看' : '生成报告' }}</button></div>
+          <div v-if="aiAnalysisResult" class="ai-markdown diagnosis-ai-body" v-html="sanitizeHtml(aiAnalysisResult)"></div>
+          <div v-else-if="overallTotalQuestions > 0" class="diagnosis-placeholder"><strong>准备好生成学习建议</strong><span>报告会结合科目、题型和近七天活跃情况。</span></div>
+          <div v-else class="diagnosis-placeholder"><strong>数据还不够</strong><span>完成一些练习后再生成诊断报告。</span></div>
         </div>
+      </section>
 
-        <Toast ref="toast" />
-    </div>
+      <section class="ui-grid ui-grid-2 diagnosis-charts">
+        <div class="ui-card ui-card-pad"><div class="ui-row-between"><h2 class="ui-section-title">科目偏好</h2><span class="ui-small ui-faint">作答占比</span></div><div v-if="!detailedStats?.subjectStats?.length" class="ui-empty">暂无数据</div><div v-else ref="subjectChartRef" class="diagnosis-chart"></div></div>
+        <div class="ui-card ui-card-pad"><div class="ui-row-between"><h2 class="ui-section-title">题型掌握度</h2><span class="ui-small ui-faint">正确率</span></div><div v-if="!detailedStats?.typeStats?.length" class="ui-empty">暂无数据</div><div v-else ref="typeChartRef" class="diagnosis-chart"></div></div>
+      </section>
+
+      <section class="diagnosis-detail">
+        <div class="ui-section-head"><div><h2 class="ui-section-title">专项能力拆解</h2><p class="ui-small ui-muted">选择专业和科目查看知识点表现</p></div></div>
+        <div class="diagnosis-filters">
+          <select v-model="selectedMajor" class="ui-select" aria-label="选择专业"><option value="" disabled>选择专业</option><option v-for="m in majors" :key="m.id" :value="m.id">{{ m.name }}</option></select>
+          <select v-model="selectedSubject" class="ui-select" aria-label="选择科目"><option value="" disabled>选择科目</option><option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option></select>
+        </div>
+        <div class="ui-grid ui-grid-2 diagnosis-charts">
+          <div class="ui-card ui-card-pad"><div class="ui-row-between"><h2 class="ui-section-title">知识点雷达</h2><span class="ui-small ui-faint">至少 3 个知识点</span></div><div v-if="!analysisData?.radar?.indicator?.length || analysisData.radar.indicator.length < 3" class="ui-empty">数据不足，无法生成雷达图</div><div v-else ref="radarChartRef" class="diagnosis-chart chart-radar"></div></div>
+          <div class="ui-card ui-card-pad"><div class="ui-row-between"><h2 class="ui-section-title">需要加强的知识点</h2><button v-if="analysisData?.weakTags?.length" class="ui-btn ui-btn-ghost ui-btn-sm" @click="router.push(`/exam/${selectedSubject}?mode=wrong`)">去复习错题 →</button></div><div v-if="!analysisData?.weakTags?.length" class="ui-empty">当前科目暂无明显弱项</div><div v-else class="weak-list"><div v-for="(item, idx) in analysisData.weakTags" :key="item.tag" class="weak-row"><span class="weak-index">{{ idx + 1 }}</span><span class="ui-grow"><strong>{{ item.tag }}</strong><small class="block ui-small ui-faint">涉及 {{ item.total }} 题</small></span><span class="ui-badge" :class="getAccuracyColor(item.accuracy)">正确率 {{ item.accuracy }}%</span></div></div></div>
+        </div>
+      </section>
+    </template>
+    <Toast ref="toast" />
+  </div>
 </template>
-
-<style scoped>
+        <style scoped>
 .glass-nav {
   background-color: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);

@@ -214,184 +214,42 @@ const clearAll = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 dark:bg-slate-900 pb-20">
-    <!-- Header -->
-    <header
-      class="bg-white dark:bg-slate-800 shadow-sm p-4 flex items-center gap-4 sticky top-0 z-10"
-    >
-      <button
-        @click="router.back()"
-        class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300"
-      >
-        ←
-      </button>
-      <h1 class="text-lg font-bold text-slate-800 dark:text-slate-100">
-        数据管理
-      </h1>
+  <div class="ui-page data-page">
+    <header class="ui-page-head">
+      <div><p class="ui-eyebrow">账户数据</p><h1 class="ui-title">学习数据</h1><p class="ui-subtitle">备份、恢复学习进度，或清理账户数据。</p></div>
+      <RouterLink to="/export" class="ui-btn ui-btn-outline ui-btn-sm">导出题库</RouterLink>
     </header>
 
-    <main class="p-6 max-w-lg mx-auto space-y-6">
-      <!-- Export Card -->
-      <section
-        class="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700"
-      >
-        <div class="flex items-center gap-3 mb-4">
-          <span
-            class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl"
-            >📤</span
-          >
-          <div>
-            <h2 class="font-bold text-slate-800 dark:text-slate-100">
-              导出备份
-            </h2>
-            <p class="text-xs text-slate-500">将进度保存到本地</p>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <button
-            @click="exportData"
-            :disabled="loading"
-            class="py-3 px-4 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 font-bold text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-colors"
-          >
-            下载 JSON
-          </button>
-          <button
-            @click="copyData"
-            :disabled="loading"
-            class="py-3 px-4 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 font-bold text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-colors"
-          >
-            复制到剪贴板
-          </button>
-        </div>
-      </section>
-
-      <!-- Import Card -->
-      <section
-        class="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700"
-      >
-        <div class="flex items-center gap-3 mb-4">
-          <span
-            class="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl"
-            >📥</span
-          >
-          <div>
-            <h2 class="font-bold text-slate-800 dark:text-slate-100">
-              导入恢复
-            </h2>
-            <p class="text-xs text-slate-500">从备份文件恢复进度</p>
-          </div>
-        </div>
-        <button
-          @click="showImportModal = true"
-          class="w-full py-3 rounded-xl bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-200 dark:shadow-none hover:bg-emerald-600 transition-colors"
-        >
-          导入数据
-        </button>
-      </section>
-
-      <!-- Danger Zone -->
-      <section class="mt-10">
-        <h3
-          class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 ml-2"
-        >
-          危险区域
-        </h3>
-        <div
-          class="bg-red-50 dark:bg-red-900/10 rounded-3xl p-6 border border-red-100 dark:border-red-900/30"
-        >
-          <div class="flex items-center gap-3 mb-4">
-            <span
-              class="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-xl"
-              >🗑️</span
-            >
-            <div>
-              <h2 class="font-bold text-red-600 dark:text-red-400">
-                清空所有数据
-              </h2>
-              <p class="text-xs text-slate-500">此操作无法撤销</p>
-            </div>
-          </div>
-          <button
-            @click="clearAll"
-            class="w-full py-3 rounded-xl bg-white dark:bg-slate-800 border-2 border-red-100 dark:border-red-900/50 text-red-500 font-bold hover:bg-red-50 transition-colors"
-          >
-            确认清空
-          </button>
-        </div>
-      </section>
-    </main>
-
-    <!-- Import Modal -->
-    <div
-      v-if="showImportModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4"
-    >
-      <div
-        class="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        @click="showImportModal = false"
-      ></div>
-      <div
-        class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md p-6 relative z-10 shadow-2xl animate-fade-in"
-      >
-        <h3 class="font-bold text-lg mb-2 text-slate-800 dark:text-slate-100">
-          导入数据恢复
-        </h3>
-
-        <!-- Category Select for Legacy Data -->
-        <div class="mb-4 space-y-2">
-          <label class="text-xs text-slate-500 block"
-            >若导入老版本JSON数据，请选择目标科目：</label
-          >
-          <select
-            v-model="importMajorId"
-            @change="handleMajorChange"
-            class="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm dark:text-slate-300"
-          >
-            <option value="">-- 选择专业 --</option>
-            <option v-for="m in majors" :key="m.id" :value="m.id">{{ m.name }}</option>
-          </select>
-          <select
-            v-if="importMajorId"
-            v-model="importSubjectId"
-            class="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm dark:text-slate-300"
-          >
-            <option value="">-- 选择科目 --</option>
-            <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option>
-          </select>
-        </div>
-
-        <textarea
-          v-model="importText"
-          class="w-full h-40 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-xs font-mono mb-4 focus:ring-2 focus:ring-indigo-500 outline-none dark:text-slate-300 resize-none"
-          placeholder="粘贴JSON内容..."
-        ></textarea>
-        <div class="flex gap-3">
-          <button
-            @click="showImportModal = false"
-            class="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-500 font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-          >
-            取消
-          </button>
-          <button
-            @click="handleImport"
-            class="flex-1 py-3 rounded-xl bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-600 transition-colors"
-          >
-            执行导入
-          </button>
-        </div>
+    <section class="ui-grid ui-grid-2 data-actions">
+      <div class="ui-card ui-card-pad">
+        <div class="ui-row"><span class="data-icon">↓</span><div><h2 class="ui-section-title">导出备份</h2><p class="ui-small ui-muted">将学习进度保存到本地 JSON</p></div></div>
+        <div class="ui-row data-button-row"><button class="ui-btn ui-btn-outline" :disabled="loading" @click="exportData">下载 JSON</button><button class="ui-btn ui-btn-ghost" :disabled="loading" @click="copyData">复制数据</button></div>
       </div>
-    </div>
+      <div class="ui-card ui-card-pad">
+        <div class="ui-row"><span class="data-icon">↑</span><div><h2 class="ui-section-title">导入恢复</h2><p class="ui-small ui-muted">支持当前进度 JSON 和旧版备份</p></div></div>
+        <div class="ui-row data-button-row"><button class="ui-btn ui-btn-primary" @click="showImportModal = true">导入数据</button><RouterLink to="/export" class="ui-btn ui-btn-ghost">完整题库导出</RouterLink></div>
+      </div>
+    </section>
 
-    <!-- Toast & Confirm Dialog -->
+    <section class="ui-card ui-card-pad data-info">
+      <h2 class="ui-section-title">数据说明</h2>
+      <div class="ui-grid ui-grid-3"><div><strong>进度备份</strong><p>这里导出的是学习进度和作答记录，不包含完整题库文件。</p></div><div><strong>题库导出</strong><p>需要管理员生成账户专属随机密码，导出范围仍受会员和专业权限限制。</p></div><div><strong>安全存储</strong><p>服务器端题库为加密存储；浏览器只显示当前授权范围内的内容。</p></div></div>
+    </section>
+
+    <section class="data-danger">
+      <div class="ui-section-head"><div><h2 class="ui-section-title" style="color:var(--danger)">危险操作</h2><p class="ui-small ui-muted">清空后无法在服务器恢复</p></div></div>
+      <div class="ui-card ui-card-pad data-danger-card"><div><strong>清空所有学习进度</strong><p class="ui-small ui-muted">会影响作答记录、错题和科目进度，请先导出备份。</p></div><button class="ui-btn ui-btn-outline" style="color:var(--danger);border-color:color-mix(in srgb,var(--danger) 30%,var(--border))" @click="clearAll">确认清空</button></div>
+    </section>
+
+    <div v-if="showImportModal" class="ui-sheet-backdrop" @click="showImportModal = false"></div>
+    <div v-if="showImportModal" class="ui-modal" role="dialog" aria-modal="true" aria-label="导入学习数据">
+      <div class="ui-row-between"><h3 class="ui-section-title">导入学习数据</h3><button class="web-icon-btn" @click="showImportModal = false">×</button></div>
+      <p class="ui-small ui-muted">旧版备份需要选择目标专业和科目。</p>
+      <div class="ui-stack mt-4"><select v-model="importMajorId" class="ui-select" @change="handleMajorChange"><option value="">选择专业</option><option v-for="m in majors" :key="m.id" :value="m.id">{{ m.name }}</option></select><select v-if="importMajorId" v-model="importSubjectId" class="ui-select"><option value="">选择科目</option><option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.name }}</option></select><textarea v-model="importText" class="ui-textarea data-import-text" placeholder="粘贴 JSON 备份内容"></textarea></div>
+      <div class="ui-row data-modal-actions"><button class="ui-btn ui-btn-outline" @click="showImportModal = false">取消</button><button class="ui-btn ui-btn-primary" :disabled="loading" @click="handleImport">执行导入</button></div>
+    </div>
     <Toast ref="toast" />
-    <ConfirmDialog
-      v-model:show="confirmDialog.show"
-      :title="confirmDialog.title"
-      :content="confirmDialog.content"
-      :type="confirmDialog.type"
-      @confirm="confirmDialog.onConfirm"
-      @cancel="confirmDialog.onCancel"
-    />
+    <ConfirmDialog v-model:show="confirmDialog.show" :title="confirmDialog.title" :content="confirmDialog.content" :type="confirmDialog.type" @confirm="confirmDialog.onConfirm" @cancel="confirmDialog.onCancel" />
   </div>
 </template>
 

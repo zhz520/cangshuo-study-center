@@ -38,11 +38,18 @@ function rateLimit(scope, limit, seconds = 60) {
     };
 }
 
-async function chargeQuestions(req, count) {
+async function chargeQuestions(req, count, db = pool, now = Date.now()) {
     if (!count || req.account?.role === 'admin') return;
-    await reserve('question-hour', req.rateSubject || req.userId, count, 1000, 3600);
-    await reserve('question-day', req.rateSubject || req.userId, count, 5000, 86400);
-    await reserve('question-ip-hour', req.ip, count, 10000, 3600);
+    await reserve('question-hour', req.rateSubject || req.userId, count, 1000, 3600, db, now);
+    await reserve('question-day', req.rateSubject || req.userId, count, 5000, 86400, db, now);
+    await reserve('question-ip-hour', req.ip, count, 10000, 3600, db, now);
+}
+
+// Question exports are authorized by an admin-issued password and limited separately
+// from reading, so a permitted export is not blocked by the 5000/day reading budget.
+async function chargeExport(req, count, db = pool, now = Date.now()) {
+    if (!count) return;
+    await reserve('question-export-day', req.userId, count, 20000, 86400, db, now);
 }
 
 function sendError(res, error) {
@@ -69,4 +76,4 @@ async function reserveAi(req) {
     return { limit, remaining: Math.max(0, limit - Number(usage[0].used)) };
 }
 
-module.exports = { reserve, rateLimit, chargeQuestions, sendError, reserveAi };
+module.exports = { reserve, rateLimit, chargeQuestions, chargeExport, sendError, reserveAi };

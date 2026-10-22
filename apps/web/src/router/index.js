@@ -19,7 +19,7 @@ const router = createRouter({
             path: '/home',
             name: 'home',
             component: HomeView,
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, shell: true }
         },
         {
             path: '/login',
@@ -67,19 +67,25 @@ const router = createRouter({
             path: '/data',
             name: 'data',
             component: () => import('../views/DataManageView.vue'),
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, shell: true }
+        },
+        {
+            path: '/export',
+            name: 'export',
+            component: () => import('../views/ExportView.vue'),
+            meta: { requiresAuth: true, shell: true, title: '题库导出 - 烁学' }
         },
         {
             path: '/stats',
             name: 'stats',
             component: () => import('../views/StatsView.vue'),
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, shell: true }
         },
         {
             path: '/analysis',
             name: 'analysis',
             component: () => import('../views/AnalysisView.vue'),
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, shell: true }
         },
         {
             path: '/exam/:subjectId',
@@ -156,8 +162,19 @@ const router = createRouter({
                     path: 'access-control',
                     name: 'admin-access-control',
                     component: () => import('../views/admin/AccessControlManagement.vue')
+                },
+                {
+                    path: 'exports',
+                    name: 'admin-exports',
+                    component: () => import('../views/admin/ExportAuthorization.vue')
                 }
             ]
+        },
+        {
+            path: '/:pathMatch(.*)*',
+            name: 'not-found',
+            component: () => import('../views/NotFoundView.vue'),
+            meta: { title: '页面不存在 - 烁学' }
         }
     ]
 })
@@ -199,10 +216,13 @@ router.beforeEach(async (to, from, next) => {
         // Redirect logged-in users to home
         next({ name: 'home' });
     } else if (to.meta.requiresAdmin) {
-        if (user && (user.role === 'admin' || user.role === 'demo')) {
+        if (user && user.role === 'admin') {
             next();
+        } else if (user && user.role === 'demo') {
+            alert('演示账号不能进入管理后台，请使用学习页面。');
+            next({ path: '/home' });
         } else {
-            if (confirm('权限不足: 需要管理员或演示账号身份。\n是否退出当前账号并重新登录？')) {
+            if (confirm('权限不足: 需要管理员身份。\n是否退出当前账号并重新登录？')) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('refreshToken');
                 localStorage.removeItem('user');

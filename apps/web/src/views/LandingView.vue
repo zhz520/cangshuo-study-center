@@ -1,1385 +1,184 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
-import { useRouter } from "vue-router";
-import appIcon from "../assets/app_icon.png";
-import { publicApi } from "../api";
+import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import appIcon from '../assets/app_icon.png';
+import { publicApi } from '../api';
 
 const router = useRouter();
-const currentYear = new Date().getFullYear();
+const mobileMenuOpen = ref(false);
+const openFaq = ref(null);
+const features = [
+  { title: '系统化题库', desc: '按专业和科目组织，支持单选、多选、判断、填空、排序和材料题。' },
+  { title: '沉浸式练习', desc: '题号、进度、计时、收藏和答题卡集中在一个专注界面。' },
+  { title: 'AI 深度解析', desc: '提交后按需获取逐步讲解，帮助定位知识盲区。' },
+  { title: '错题与收藏', desc: '错题按科目复习，收藏独立管理，学习记录保留在账号中。' },
+  { title: '模拟考试', desc: '试卷计时、标记、答题卡和交卷前检查保持完整流程。' },
+  { title: '多端同步', desc: 'Web 与 Android 共用账号和学习进度，随时继续上次练习。' },
+];
+const stats = ref([
+  { value: '...', label: '题库数量' },
+  { value: '...', label: '注册用户' },
+  { value: '98%', label: '用户满意度' },
+  { value: '24/7', label: 'AI 在线服务' },
+]);
+const faqs = [
+  { q: '烁学支持哪些平台？', a: '支持 Web 浏览器和 Android 原生 App，账号学习进度在两端同步。' },
+  { q: '题库内容是否免费？', a: '免费账号可预览每个科目的前 20 道题；Plus 会员解锁完整题库、更多 AI 解析次数和学习权益。' },
+  { q: 'AI 解析是真实 AI 吗？', a: '是，接入大模型 API，答案解析按题目和作答内容生成或读取。' },
+  { q: '数据安全性如何保障？', a: '采用双 Token 鉴权、HTTPS 传输和服务端加密存储，题库不会以全量明文形式公开。' },
+];
 
-// Navbar scroll effect
-const scrolled = ref(false);
-const handleScroll = () => {
-  scrolled.value = window.scrollY > 40;
-};
+const toggleFaq = (i) => { openFaq.value = openFaq.value === i ? null : i; };
+const go = (path) => { mobileMenuOpen.value = false; router.push(path); };
+
 onMounted(async () => {
-  window.addEventListener("scroll", handleScroll);
   try {
     const res = await publicApi.getStats();
-    if (res.data && res.data.success) {
-      stats.value[0].value = res.data.data.questionCount.toLocaleString() + "+";
-      stats.value[1].value = res.data.data.userCount.toLocaleString() + "+";
+    if (res.data?.success) {
+      stats.value[0].value = `${Number(res.data.data.questionCount).toLocaleString()}+`;
+      stats.value[1].value = `${Number(res.data.data.userCount).toLocaleString()}+`;
     }
-  } catch (e) {
-    console.error("Fetch stats error:", e);
-  }
+  } catch {}
 });
-onUnmounted(() => window.removeEventListener("scroll", handleScroll));
-
-// Mobile menu
-const mobileMenuOpen = ref(false);
-
-const features = [
-  {
-    icon: "📚",
-    title: "海量题库",
-    desc: "精选历年真题与模拟题，覆盖多专业方向，持续更新扩充",
-    color: "#6366f1",
-  },
-  {
-    icon: "🧠",
-    title: "AI 智能解析",
-    desc: "实时 AI 逐步讲解每道题，不只给答案，让你真正理解",
-    color: "#a855f7",
-  },
-  {
-    icon: "📊",
-    title: "学情数据报告",
-    desc: "可视化追踪学习进度，掌握薄弱点，科学制定复习计划",
-    color: "#06b6d4",
-  },
-  {
-    icon: "☁️",
-    title: "多端云同步",
-    desc: "账号数据实时同步，Web 端与 App 端无缝切换无缝衔接",
-    color: "#10b981",
-  },
-  {
-    icon: "⚡",
-    title: "自适应练习",
-    desc: "根据作答历史智能推题，让每次练习都高效有针对性",
-    color: "#f59e0b",
-  },
-  {
-    icon: "🔒",
-    title: "安全可靠",
-    desc: "双 Token 鉴权机制，数据加密存储，保护你的学习隐私",
-    color: "#ec4899",
-  },
-];
-
-const stats = ref([
-  { value: "...", label: "题库数量" },
-  { value: "...", label: "注册用户" },
-  { value: "98%", label: "用户满意度" },
-  { value: "24/7", label: "AI 在线服务" },
-]);
-
-const faqs = [
-  {
-    q: "烁学支持哪些平台？",
-    a: "目前支持 Web 浏览器（PC/移动端）和 Android 原生 App，iOS 版本正在加速开发中。",
-  },
-  {
-    q: "题库内容是否免费？",
-    a: "免费账号可预览每个科目的前 20 道题；Plus 会员解锁完整题库、更多 AI 解析次数和学习权益。",
-  },
-  {
-    q: "AI 解析是真实 AI 吗？",
-    a: "是的，我们接入了大模型 API，每道题都能获得详细的逐步 AI 解析，而不是预设文本。",
-  },
-  {
-    q: "数据安全性如何保障？",
-    a: "采用双 Token 鉴权、HTTPS 加密传输及服务端数据加密存储，你的学习数据安全无忧。",
-  },
-];
-
-const openFaq = ref(null);
-const toggleFaq = (i) => {
-  openFaq.value = openFaq.value === i ? null : i;
-};
 </script>
 
 <template>
-  <div class="landing" itemscope itemtype="https://schema.org/WebPage">
-    <!-- ── Particles Background ── -->
-    <div class="particles" aria-hidden="true">
-      <div
-        v-for="i in 18"
-        :key="i"
-        class="particle"
-        :style="{
-          left: ((i * 5.5 + 2) % 100) + '%',
-          animationDelay: i * 0.37 + 's',
-          animationDuration: 12 + (i % 8) + 's',
-          width: 2 + (i % 3) + 'px',
-          height: 2 + (i % 3) + 'px',
-          opacity: 0.08 + (i % 5) * 0.04,
-        }"
-      ></div>
-    </div>
-
-    <!-- ── Ambient Glows ── -->
-    <div class="ambient" aria-hidden="true">
-      <div class="glow glow-1"></div>
-      <div class="glow glow-2"></div>
-      <div class="glow glow-3"></div>
-    </div>
-
-    <!-- ──────────────────── NAVBAR ──────────────────── -->
-    <nav :class="['navbar', { 'navbar--scrolled': scrolled }]">
-      <div class="nav-inner">
-      <a class="nav-brand" href="/" aria-label="烁学首页">
-          <img :src="appIcon" alt="烁学 - AI 智能刷题平台" class="nav-logo" width="32" height="32" />
-          <span class="nav-name">烁学</span>
-        </a>
-
-        <ul class="nav-links">
-          <li><a href="#features">功能</a></li>
-          <li><a href="#stats">数据</a></li>
-          <li><a href="#faq">常见问题</a></li>
-          <li><a href="/download">下载 App</a></li>
-          <li><a href="/score-query" style="color: #a855f7; font-weight: bold;">联考成绩查询</a></li>
-        </ul>
-
-        <div class="nav-actions">
-          <button class="btn-ghost" @click="router.push('/login')">登录</button>
-          <button class="btn-primary nav-cta" @click="router.push('/register')">
-            免费注册
-          </button>
-        </div>
-
-        <!-- Mobile hamburger -->
-        <button
-          class="hamburger"
-          @click="mobileMenuOpen = !mobileMenuOpen"
-          aria-label="菜单"
-        >
-          <span :class="{ open: mobileMenuOpen }"></span>
-          <span :class="{ open: mobileMenuOpen }"></span>
-          <span :class="{ open: mobileMenuOpen }"></span>
-        </button>
-      </div>
-
-      <!-- Mobile Dropdown -->
-      <Transition name="mobile-menu-slide">
-        <div v-show="mobileMenuOpen" class="mobile-menu">
-          <a href="#features" @click="mobileMenuOpen = false">功能</a>
-          <a href="#stats" @click="mobileMenuOpen = false">数据</a>
-          <a href="#faq" @click="mobileMenuOpen = false">常见问题</a>
-          <a href="/download" @click="mobileMenuOpen = false">下载 App</a>
-          <a href="/score-query" @click="mobileMenuOpen = false" style="color: #a855f7; font-weight: bold;">联考成绩查询</a>
-          <div class="mobile-actions">
-            <button class="btn-ghost" @click="router.push('/login')">
-              登录
-            </button>
-            <button class="btn-primary" @click="router.push('/register')">
-              免费注册
-            </button>
-          </div>
-        </div>
-      </Transition>
-    </nav>
-
-    <!-- ──────────────────── HERO ──────────────────── -->
-    <section class="hero" role="banner" aria-label="烁学主题横幅">
-      <div class="hero-inner">
-        <div class="hero-badge">🎉 AI 驱动的学习新方式</div>
-        <h1 class="hero-title">
-          学习更高效<br />
-          <span class="gradient-text">让 AI 成为你的老师</span>
-        </h1>
-        <p class="hero-sub">
-          烁学提供海量题库 · AI 实时解析 · 学情数据分析<br />
-          帮助你告别低效刷题，科学备考，稳步提升
-        </p>
-        <div class="hero-ctas">
-          <button class="btn-primary btn-lg" @click="router.push('/register')">
-            <span>立即免费使用</span>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
-          <a href="/download" class="btn-outline btn-lg">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            <span>下载安卓版</span>
-          </a>
-        </div>
-
-        <!-- App Icon showcase -->
-        <div class="hero-icon-showcase">
-          <div class="showcase-ring showcase-ring--3"></div>
-          <div class="showcase-ring showcase-ring--2"></div>
-          <div class="showcase-ring showcase-ring--1"></div>
-          <div class="showcase-icon">
-            <img :src="appIcon" alt="烁学 App 图标 - AI 智能刷题平台" width="120" height="120" />
-          </div>
-        </div>
-
-        <p class="hero-platforms">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.4c1.39.07 2.36.78 3.18.8 1.22-.26 2.38-.99 3.65-.84 1.56.18 2.72.86 3.47 2.17-3.17 1.93-2.43 6.02.7 7.16-.58 1.39-1.28 2.77-3 3.59zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
-            />
-          </svg>
-          iOS 版即将推出 &nbsp;·&nbsp;
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M17.523 15.342 7 22V2l10.523 6.658L22 12z" />
-          </svg>
-          Android 版已发布 &nbsp;·&nbsp;
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <rect x="2" y="3" width="20" height="14" rx="2" />
-            <path d="M8 21h8M12 17v4" />
-          </svg>
-          Web 端随时使用
-        </p>
-      </div>
-    </section>
-
-    <!-- ──────────────────── STATS ──────────────────── -->
-    <section id="stats" class="stats-section">
-      <div class="section-inner">
-        <div class="stats-grid">
-          <div v-for="s in stats" :key="s.label" class="stat-card">
-            <div class="stat-value">{{ s.value }}</div>
-            <div class="stat-label">{{ s.label }}</div>
-          </div>
+  <div class="landing-page">
+    <header class="landing-nav">
+      <div class="landing-container landing-nav-inner">
+        <RouterLink to="/" class="web-brand"><span class="web-brand-mark">烁</span><span>烁学</span></RouterLink>
+        <nav class="landing-links" aria-label="产品导航">
+          <a href="#features">功能</a><a href="#stats">数据</a><a href="#faq">常见问题</a><RouterLink to="/download">下载 App</RouterLink><RouterLink to="/score-query">成绩查询</RouterLink>
+        </nav>
+        <div class="landing-nav-actions">
+          <button class="ui-btn ui-btn-ghost" @click="go('/login')">登录</button>
+          <button class="ui-btn ui-btn-dark" @click="go('/register')">免费开始</button>
+          <button class="landing-menu-btn" type="button" aria-label="打开导航" @click="mobileMenuOpen = !mobileMenuOpen">☰</button>
         </div>
       </div>
-    </section>
+      <div v-if="mobileMenuOpen" class="landing-mobile-menu">
+        <a href="#features" @click="mobileMenuOpen = false">功能</a><a href="#faq" @click="mobileMenuOpen = false">常见问题</a><RouterLink to="/download">下载 App</RouterLink><RouterLink to="/login">登录</RouterLink><RouterLink to="/register">免费开始</RouterLink>
+      </div>
+    </header>
 
-    <!-- ──────────────────── FEATURES ──────────────────── -->
-    <section id="features" class="features-section" aria-labelledby="features-title">
-      <div class="section-inner">
-        <div class="section-tag">核心功能</div>
-        <h2 id="features-title" class="section-title">为什么选择烁学</h2>
-        <p class="section-sub">
-          专为需要高效备考的同学打造，每一项功能都直指痛点
-        </p>
-        <div class="features-grid">
-          <div v-for="f in features" :key="f.title" class="feature-card">
-            <div
-              class="feature-icon"
-              :style="{
-                background: f.color + '1a',
-                border: '1px solid ' + f.color + '40',
-              }"
-            >
-              <span>{{ f.icon }}</span>
+    <main>
+      <section class="landing-hero">
+        <div class="landing-container landing-hero-grid">
+          <div>
+            <span class="ui-badge ui-badge-blue">专注每一次进步</span>
+            <h1>把刷题做得更清楚，<br /><span>也更专注。</span></h1>
+            <p>烁学把题库、练习、错题、模拟考试和学习分析放在一个安静的学习空间里。Web 与 Android 同步，随时继续。</p>
+            <div class="landing-hero-actions">
+              <button class="ui-btn ui-btn-primary ui-btn-lg" @click="go('/register')">开始学习</button>
+              <button class="ui-btn ui-btn-outline ui-btn-lg" @click="go('/login')">已有账号登录</button>
             </div>
-            <h3 class="feature-title">{{ f.title }}</h3>
-            <p class="feature-desc">{{ f.desc }}</p>
-            <div
-              class="feature-accent"
-              :style="{
-                background:
-                  'linear-gradient(90deg, ' + f.color + ', transparent)',
-              }"
-            ></div>
+            <div class="landing-trust"><span>服务端权限控制</span><span>题库加密存储</span><span>学习记录可恢复</span></div>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ──────────────────── HOW IT WORKS ──────────────────── -->
-    <section class="how-section">
-      <div class="section-inner">
-        <div class="section-tag">使用流程</div>
-        <h2 class="section-title">三步开始高效学习</h2>
-        <div class="steps-row">
-          <div class="step-card">
-            <div class="step-num">01</div>
-            <div class="step-body">
-              <h3>注册账号</h3>
-              <p>
-                填写用户名和密码，30 秒即可完成注册，也可通过 Web 端直接开始
-              </p>
-            </div>
-          </div>
-          <div class="step-arrow">→</div>
-          <div class="step-card">
-            <div class="step-num">02</div>
-            <div class="step-body">
-              <h3>选择科目</h3>
-              <p>从题库中选择你需要备考的专业科目，开始个性化刷题训练</p>
-            </div>
-          </div>
-          <div class="step-arrow">→</div>
-          <div class="step-card">
-            <div class="step-num">03</div>
-            <div class="step-body">
-              <h3>AI 解析提升</h3>
-              <p>遇到不会的题目，AI 实时给出详细解析，真正理解而非死记硬背</p>
+          <div class="landing-product">
+            <div class="landing-product-bar"><img :src="appIcon" alt="烁学图标" /><span>烁学</span><span class="ui-badge ui-badge-green">学习空间</span></div>
+            <div class="landing-product-body">
+              <div class="mini-head"><span>今日学习</span><span class="ui-faint">继续上次练习</span></div>
+              <div class="mini-title">计算机基础</div>
+              <div class="mini-progress"><span style="width:64%"></span></div>
+              <div class="mini-stats"><div><strong>32</strong><small>今日完成</small></div><div><strong>83%</strong><small>正确率</small></div><div><strong>12</strong><small>连续学习</small></div></div>
+              <div class="mini-list"><div><span>数据结构与算法</span><span class="ui-faint">继续 ›</span></div><div><span>错题复习</span><span class="ui-faint">8 题待复习</span></div><div><span>模拟考试</span><span class="ui-faint">查看试卷 ›</span></div></div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ──────────────────── CTA BANNER ──────────────────── -->
-    <section class="cta-section">
-      <div class="cta-glow cta-glow-l"></div>
-      <div class="cta-glow cta-glow-r"></div>
-      <div class="section-inner cta-inner">
-        <div class="cta-icon">
-          <img :src="appIcon" alt="烁学" width="64" height="64" />
-        </div>
-        <h2 class="cta-title">立即开始你的 AI 学习之旅</h2>
-        <p class="cta-sub">
-          Web 端免费使用 · Android App 免费下载 · iOS 即将上线
-        </p>
-        <div class="cta-btns">
-          <button class="btn-primary btn-lg" @click="router.push('/register')">
-            免费注册 Web 端
-          </button>
-          <a href="/download" class="btn-outline btn-lg">下载 Android App</a>
-        </div>
-      </div>
-    </section>
+      <section id="stats" class="landing-stats">
+        <div class="landing-container landing-stats-grid"><div v-for="item in stats" :key="item.label"><strong>{{ item.value }}</strong><span>{{ item.label }}</span></div></div>
+      </section>
 
-    <!-- ──────────────────── FAQ ──────────────────── -->
-    <section id="faq" class="faq-section" aria-labelledby="faq-title">
-      <div class="section-inner">
-        <div class="section-tag">常见问题</div>
-        <h2 id="faq-title" class="section-title">你可能想知道</h2>
-        <div class="faq-list">
-          <div
-            v-for="(item, i) in faqs"
-            :key="i"
-            class="faq-item"
-            :class="{ 'faq-item--open': openFaq === i }"
-            @click="toggleFaq(i)"
-          >
-            <div class="faq-q">
-              <span>{{ item.q }}</span>
-              <svg
-                class="faq-chevron"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </div>
-            <div class="faq-a">
-              <p>{{ item.a }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+      <section id="features" class="landing-section landing-container">
+        <div class="landing-section-head"><span class="ui-eyebrow">产品能力</span><h2>少一点干扰，多一点完成</h2><p>从进入题库到复盘，保持一条清楚的学习路径。</p></div>
+        <div class="landing-feature-grid"><article v-for="(feature, i) in features" :key="feature.title" class="landing-feature"><span class="feature-index">0{{ i + 1 }}</span><h3>{{ feature.title }}</h3><p>{{ feature.desc }}</p></article></div>
+      </section>
 
-    <!-- ──────────────────── FOOTER ──────────────────── -->
-    <footer class="footer" role="contentinfo">
-      <div class="footer-inner">
-        <div class="footer-brand">
-          <img :src="appIcon" alt="烁学" class="footer-logo" width="28" height="28" />
-          <span>烁学</span>
-        </div>
-        <p class="footer-tagline">你的 AI 学习伙伴，让备考更高效</p>
-        <div class="footer-links">
-          <router-link to="/agreement">用户协议</router-link>
-          <span class="dot">·</span>
-          <router-link to="/privacy">隐私政策</router-link>
-          <span class="dot">·</span>
-          <router-link to="/download">下载 App</router-link>
-          <span class="dot">·</span>
-          <router-link to="/login">登录</router-link>
-        </div>
-        <p class="footer-copy">
-          © {{ currentYear }} 烁学. All rights reserved.
-        </p>
-        <div class="footer-filing">
-          <a
-            href="https://beian.miit.gov.cn/"
-            target="_blank"
-            class="filing-item"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-            蜀ICP备2025126838号-1
-          </a>
-          <a
-            href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51172202000160"
-            target="_blank"
-            class="filing-item"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 9h2v2h-2V10zm0 4h2v4h-2v-4z"
-              />
-            </svg>
-            川公网安备51172202000160号
-          </a>
-        </div>
-      </div>
-    </footer>
+      <section class="landing-section landing-container landing-flow">
+        <div class="landing-section-head"><span class="ui-eyebrow">学习路径</span><h2>每次打开都知道下一步</h2></div>
+        <div class="landing-flow-grid"><div><b>01</b><strong>选择科目</strong><span>按专业查找，保留最近使用。</span></div><div><b>02</b><strong>专注练习</strong><span>题目、选项、进度和答题卡放在一个界面。</span></div><div><b>03</b><strong>回看进步</strong><span>错题、收藏、趋势和模拟考试持续积累。</span></div></div>
+      </section>
+
+      <section id="faq" class="landing-section landing-container landing-faq">
+        <div class="landing-section-head"><span class="ui-eyebrow">常见问题</span><h2>你可能想知道</h2></div>
+        <div class="ui-list-card ui-card"><button v-for="(item, i) in faqs" :key="item.q" class="ui-row-button faq-row" @click="toggleFaq(i)"><span class="ui-grow"><strong>{{ item.q }}</strong><small v-if="openFaq === i" class="block ui-small ui-muted faq-answer">{{ item.a }}</small></span><span class="ui-faint">{{ openFaq === i ? '−' : '+' }}</span></button></div>
+      </section>
+
+      <section class="landing-cta"><div class="landing-container landing-cta-inner"><div><span class="ui-eyebrow">现在开始</span><h2>把下一次练习，变成看得见的进步。</h2></div><div><button class="ui-btn ui-btn-primary ui-btn-lg" @click="go('/register')">免费注册</button><RouterLink to="/download" class="ui-btn ui-btn-outline ui-btn-lg">下载 Android App</RouterLink></div></div></section>
+    </main>
+
+    <footer class="landing-footer"><div class="landing-container landing-footer-inner"><span>© {{ new Date().getFullYear() }} 沧烁</span><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">蜀ICP备2025126838号-1</a><a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51172202000160" target="_blank" rel="noopener">川公网安备51172202000160号</a><div><RouterLink to="/agreement">用户协议</RouterLink><RouterLink to="/privacy">隐私政策</RouterLink><RouterLink to="/login">登录</RouterLink></div></div></footer>
   </div>
 </template>
 
 <style scoped>
-/* ═══════════════════════════════ BASE ════════════════════════════════ */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-.landing {
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: #080810;
-  color: #e8e8f0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Inter",
-    sans-serif;
-  position: relative;
-  overflow-x: hidden;
-}
-
-/* ═══════════════════════════════ BACKGROUND ══════════════════════════ */
-.particles {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-.particle {
-  position: absolute;
-  background: #6366f1;
-  border-radius: 50%;
-  animation: float linear infinite;
-}
-@keyframes float {
-  0% {
-    transform: translateY(110vh) scale(0);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-10vh) scale(1);
-    opacity: 0;
-  }
-}
-
-.ambient {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-.glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(100px);
-  animation: drift 16s ease-in-out infinite alternate;
-}
-.glow-1 {
-  width: 70vw;
-  height: 70vw;
-  background: radial-gradient(circle, #4f46e530, #7c3aed20);
-  top: -20%;
-  left: -20%;
-}
-.glow-2 {
-  width: 50vw;
-  height: 50vw;
-  background: radial-gradient(circle, #a855f720, #ec489915);
-  bottom: 0;
-  right: -10%;
-  animation-delay: -6s;
-  animation-direction: alternate-reverse;
-}
-.glow-3 {
-  width: 30vw;
-  height: 30vw;
-  background: radial-gradient(circle, #06b6d420, #3b82f615);
-  top: 50%;
-  left: 40%;
-  animation-delay: -3s;
-}
-@keyframes drift {
-  from {
-    transform: translate(0, 0) scale(1);
-  }
-  to {
-    transform: translate(5%, 8%) scale(1.1);
-  }
-}
-
-/* ═══════════════════════════════ HELPERS ═════════════════════════════ */
-.gradient-text {
-  background: linear-gradient(120deg, #a78bfa, #60a5fa, #34d399);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.section-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 24px;
-  position: relative;
-  z-index: 1;
-}
-.section-tag {
-  display: inline-block;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  color: #a78bfa;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  padding: 4px 14px;
-  border-radius: 100px;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
-.section-title {
-  font-size: clamp(1.8rem, 4vw, 2.8rem);
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.03em;
-  margin-bottom: 12px;
-}
-.section-sub {
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.45);
-  max-width: 560px;
-  line-height: 1.7;
-  margin-bottom: 56px;
-}
-
-/* ═══════════════════════════════ BUTTONS ═════════════════════════════ */
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 13px 28px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.45);
-  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.btn-primary:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 36px rgba(99, 102, 241, 0.6);
-}
-.btn-primary:active {
-  transform: scale(0.97);
-}
-
-.btn-outline {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  padding: 13px 28px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  backdrop-filter: blur(10px);
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-.btn-outline:hover {
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-1px);
-}
-
-.btn-ghost {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: all 0.15s;
-  text-decoration: none;
-}
-.btn-ghost:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.btn-lg {
-  padding: 16px 36px;
-  font-size: 1rem;
-  border-radius: 14px;
-}
-
-/* ═══════════════════════════════ NAVBAR ══════════════════════════════ */
-.navbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 200;
-  transition: all 0.3s;
-}
-.navbar--scrolled {
-  background: rgba(8, 8, 16, 0.85);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3);
-}
-.nav-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 18px 24px;
-  display: flex;
-  align-items: center;
-  gap: 40px;
-  overflow: hidden;
-}
-.nav-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  flex-shrink: 0;
-}
-.nav-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: transparent;
-  object-fit: contain;
-  filter: invert(1);
-}
-.nav-name {
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.02em;
-}
-.nav-links {
-  display: flex;
-  list-style: none;
-  gap: 32px;
-  flex: 1;
-}
-.nav-links a {
-  color: rgba(255, 255, 255, 0.55);
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: color 0.15s;
-}
-.nav-links a:hover {
-  color: #fff;
-}
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-.nav-cta {
-  padding: 10px 20px;
-  font-size: 0.88rem;
-  border-radius: 10px;
-}
-
-/* Hamburger */
-.hamburger {
-  display: none;
-  flex-direction: column;
-  gap: 5px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  margin-left: auto;
-}
-.hamburger span {
-  display: block;
-  width: 22px;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 2px;
-  transition: all 0.25s;
-}
-.hamburger span.open:nth-child(1) {
-  transform: translateY(7px) rotate(45deg);
-}
-.hamburger span.open:nth-child(2) {
-  opacity: 0;
-}
-.hamburger span.open:nth-child(3) {
-  transform: translateY(-7px) rotate(-45deg);
-}
-
-.mobile-menu {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 24px 20px;
-  background: rgba(8, 8, 16, 0.96);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  transform-origin: top;
-}
-
-/* Vue Transition: mobile menu slide down */
-.mobile-menu-slide-enter-active {
-  animation: menu-slide-in 0.25s ease;
-}
-.mobile-menu-slide-leave-active {
-  animation: menu-slide-in 0.18s ease reverse;
-}
-@keyframes menu-slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.mobile-menu a {
-  color: rgba(255, 255, 255, 0.65);
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 500;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: color 0.15s;
-}
-.mobile-menu a:hover {
-  color: #fff;
-}
-.mobile-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
-}
-.mobile-actions .btn-primary,
-.mobile-actions .btn-ghost {
-  flex: 1;
-  justify-content: center;
-}
-
-/* ═══════════════════════════════ HERO ════════════════════════════════ */
-.hero {
-  position: relative;
-  z-index: 1;
-  padding: 160px 0 100px;
-  text-align: center;
-}
-.hero-inner {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  color: #a78bfa;
-  font-size: 0.82rem;
-  font-weight: 600;
-  padding: 6px 16px;
-  border-radius: 100px;
-  margin-bottom: 28px;
-  letter-spacing: 0.02em;
-}
-.hero-title {
-  font-size: clamp(2.5rem, 7vw, 4.5rem);
-  font-weight: 900;
-  color: #fff;
-  letter-spacing: -0.04em;
-  line-height: 1.1;
-  margin-bottom: 24px;
-}
-.hero-sub {
-  font-size: clamp(1rem, 2vw, 1.15rem);
-  color: rgba(255, 255, 255, 0.45);
-  line-height: 1.8;
-  margin-bottom: 40px;
-}
-.hero-ctas {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 64px;
-}
-
-/* Icon Showcase */
-.hero-icon-showcase {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.showcase-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(99, 102, 241, 0.25);
-  animation: pulse-ring 3s ease-out infinite;
-}
-.showcase-ring--1 {
-  width: 120px;
-  height: 120px;
-  animation-delay: 0s;
-}
-.showcase-ring--2 {
-  width: 160px;
-  height: 160px;
-  animation-delay: 0.8s;
-}
-.showcase-ring--3 {
-  width: 200px;
-  height: 200px;
-  animation-delay: 1.6s;
-}
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.85);
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 0.2;
-  }
-  100% {
-    transform: scale(1.05);
-    opacity: 0;
-  }
-}
-.showcase-icon {
-  width: 88px;
-  height: 88px;
-  background: linear-gradient(
-    145deg,
-    rgba(99, 102, 241, 0.2),
-    rgba(139, 92, 246, 0.12)
-  );
-  border-radius: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 0 0 1px rgba(99, 102, 241, 0.35),
-    0 0 50px rgba(99, 102, 241, 0.3),
-    0 20px 60px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(12px);
-  position: relative;
-  z-index: 1;
-}
-.showcase-icon img {
-  width: 60px;
-  height: 60px;
-  object-fit: contain;
-  filter: invert(1) drop-shadow(0 2px 10px rgba(99, 102, 241, 0.5));
-}
-
-.hero-platforms {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.25);
-  flex-wrap: wrap;
-}
-.hero-platforms svg {
-  vertical-align: middle;
-}
-
-/* ═══════════════════════════════ STATS ═══════════════════════════════ */
-.stats-section {
-  position: relative;
-  z-index: 1;
-  padding: 0 0 80px;
-}
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  justify-content: center;
-  align-items: stretch;
-  margin: 0 auto;
-}
-.stat-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 32px 20px;
-  text-align: center;
-  transition: all 0.2s;
-  backdrop-filter: blur(10px);
-}
-.stat-card:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(99, 102, 241, 0.3);
-  transform: translateY(-3px);
-}
-.stat-value {
-  font-size: 2.2rem;
-  font-weight: 900;
-  background: linear-gradient(120deg, #a78bfa, #60a5fa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: -0.03em;
-  margin-bottom: 6px;
-}
-.stat-label {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.4);
-  font-weight: 500;
-}
-
-/* ═══════════════════════════════ FEATURES ════════════════════════════ */
-.features-section {
-  position: relative;
-  z-index: 1;
-  padding: 80px 0;
-}
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-.feature-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 20px;
-  padding: 28px 24px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.25s;
-}
-.feature-card:hover {
-  background: rgba(255, 255, 255, 0.07);
-  transform: translateY(-4px);
-}
-.feature-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.6rem;
-  margin-bottom: 18px;
-}
-.feature-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 8px;
-}
-.feature-desc {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.38);
-  line-height: 1.65;
-}
-.feature-accent {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  width: 60%;
-  opacity: 0.5;
-}
-
-/* ═══════════════════════════════ HOW IT WORKS ════════════════════════ */
-.how-section {
-  position: relative;
-  z-index: 1;
-  padding: 80px 0;
-  text-align: center;
-}
-.steps-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.step-arrow {
-  font-size: 1.5rem;
-  color: rgba(99, 102, 241, 0.5);
-  flex-shrink: 0;
-  font-weight: 300;
-}
-.step-card {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 20px;
-  padding: 32px 24px;
-  text-align: left;
-  transition: all 0.25s;
-}
-.step-card:hover {
-  background: rgba(255, 255, 255, 0.07);
-  transform: translateY(-3px);
-}
-.step-num {
-  font-size: 2.5rem;
-  font-weight: 900;
-  background: linear-gradient(135deg, #4f46e5, #a855f7);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  line-height: 1;
-  margin-bottom: 16px;
-}
-.step-body h3 {
-  font-size: 1rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 8px;
-}
-.step-body p {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.38);
-  line-height: 1.65;
-}
-
-/* ═══════════════════════════════ CTA BANNER ══════════════════════════ */
-.cta-section {
-  position: relative;
-  z-index: 1;
-  padding: 100px 0;
-  text-align: center;
-  overflow: hidden;
-}
-.cta-glow {
-  position: absolute;
-  width: 50vw;
-  height: 50vw;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.15;
-  pointer-events: none;
-}
-.cta-glow-l {
-  background: #6366f1;
-  top: -20%;
-  left: -10%;
-}
-.cta-glow-r {
-  background: #a855f7;
-  bottom: -20%;
-  right: -10%;
-}
-.cta-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.cta-icon {
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(
-    145deg,
-    rgba(99, 102, 241, 0.2),
-    rgba(139, 92, 246, 0.12)
-  );
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 28px;
-  box-shadow:
-    0 0 0 1px rgba(99, 102, 241, 0.35),
-    0 0 40px rgba(99, 102, 241, 0.3),
-    0 20px 60px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-}
-.cta-icon img {
-  width: 52px;
-  height: 52px;
-  object-fit: contain;
-  filter: invert(1) drop-shadow(0 2px 8px rgba(99, 102, 241, 0.4));
-}
-.cta-title {
-  font-size: clamp(1.8rem, 4vw, 2.6rem);
-  font-weight: 900;
-  color: #fff;
-  letter-spacing: -0.03em;
-  margin-bottom: 12px;
-}
-.cta-sub {
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 36px;
-}
-.cta-btns {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-/* ═══════════════════════════════ FAQ ═════════════════════════════════ */
-.faq-section {
-  position: relative;
-  z-index: 1;
-  padding: 80px 0;
-}
-.faq-list {
-  max-width: 720px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.faq-item {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.faq-item:hover,
-.faq-item--open {
-  border-color: rgba(99, 102, 241, 0.35);
-  background: rgba(255, 255, 255, 0.06);
-}
-.faq-q {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-}
-.faq-chevron {
-  flex-shrink: 0;
-  color: rgba(99, 102, 241, 0.7);
-  transition: transform 0.25s;
-}
-.faq-item--open .faq-chevron {
-  transform: rotate(180deg);
-}
-.faq-a {
-  max-height: 0;
-  overflow: hidden;
-  transition:
-    max-height 0.3s ease,
-    padding 0.25s;
-}
-.faq-item--open .faq-a {
-  max-height: 200px;
-}
-.faq-a p {
-  padding: 0 24px 20px;
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.4);
-  line-height: 1.7;
-}
-
-/* ═══════════════════════════════ FOOTER ══════════════════════════════ */
-.footer {
-  position: relative;
-  z-index: 1;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 48px 24px 40px;
-  text-align: center;
-}
-.footer-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-}
-.footer-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: #fff;
-}
-.footer-logo {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  object-fit: contain;
-  background: transparent;
-  filter: invert(1);
-}
-.footer-tagline {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.3);
-}
-.footer-links {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.footer-links a {
-  color: rgba(255, 255, 255, 0.3);
-  text-decoration: none;
-  font-size: 0.82rem;
-  transition: color 0.15s;
-}
-.footer-links a:hover {
-  color: rgba(255, 255, 255, 0.7);
-}
-.dot {
-  color: rgba(255, 255, 255, 0.15);
-}
-.footer-copy {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.15);
-}
-
-/* Filing Info */
-.footer-filing {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  width: 100%;
-  max-width: 400px;
-}
-.filing-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: rgba(255, 255, 255, 0.28);
-  text-decoration: none;
-  font-size: 0.72rem;
-  transition: color 0.15s;
-  letter-spacing: 0.01em;
-}
-.filing-item:hover {
-  color: rgba(255, 255, 255, 0.65);
-}
-.filing-item svg {
-  opacity: 0.6;
-  flex-shrink: 0;
-}
-
-/* ═══════════════════════════════ RESPONSIVE ══════════════════════════ */
-@media (max-width: 768px) {
-  .nav-links,
-  .nav-actions {
-    display: none;
-    width: 0;
-    min-width: 0;
-    overflow: hidden;
-    flex: 0;
-  }
-  .hamburger {
-    display: flex;
-  }
-  .stats-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .features-grid {
-    grid-template-columns: 1fr;
-  }
-  .steps-row {
-    flex-direction: column;
-  }
-  .step-arrow {
-    transform: rotate(90deg);
-  }
-}
-@media (max-width: 480px) {
-  .stats-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .hero-ctas {
-    flex-direction: column;
-    align-items: center;
-  }
-  .hero-ctas .btn-lg {
-    width: 100%;
-    max-width: 300px;
-    justify-content: center;
-  }
-  .cta-btns {
-    flex-direction: column;
-    align-items: center;
-  }
-  .cta-btns a,
-  .cta-btns button {
-    width: 100%;
-    max-width: 300px;
-    justify-content: center;
-  }
-}
+.landing-page { min-height: 100vh; background: var(--bg-body); color: var(--text-main); }
+.landing-container { width: min(1120px, 100%); margin: 0 auto; padding-left: 22px; padding-right: 22px; }
+.landing-nav { position: sticky; top: 0; z-index: 30; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--bg-body) 94%, transparent); backdrop-filter: blur(14px); }
+.landing-nav-inner { min-height: 62px; display: flex; align-items: center; gap: 28px; }
+.landing-links { display: flex; align-items: center; gap: 22px; flex: 1; color: var(--text-sub); font-size: 13px; }
+.landing-links a:hover { color: var(--text-main); }
+.landing-nav-actions { display: flex; align-items: center; gap: 6px; }
+.landing-menu-btn { display: none; width: 36px; height: 36px; border-radius: 9px; color: var(--text-sub); font-size: 18px; }
+.landing-mobile-menu { display: none; }
+.landing-hero { padding: 80px 0 58px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--bg-body)), var(--bg-body) 72%); }
+.landing-hero-grid { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(320px,.9fr); gap: 72px; align-items: center; }
+.landing-hero h1 { margin-top: 20px; font-size: clamp(38px, 5vw, 58px); line-height: 1.08; letter-spacing: -.055em; font-weight: 720; }
+.landing-hero h1 span { color: var(--primary); }
+.landing-hero p { max-width: 520px; margin-top: 20px; font-size: 15px; line-height: 1.8; color: var(--text-sub); }
+.landing-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.landing-trust { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 24px; color: var(--text-quote); font-size: 11px; }
+.landing-trust span::before { content: '·'; margin-right: 6px; color: var(--success); }
+.landing-product { border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); box-shadow: 0 14px 40px rgba(15,23,42,.06); overflow: hidden; transform: rotate(1.2deg); }
+.landing-product-bar { height: 52px; display: flex; align-items: center; gap: 9px; padding: 0 16px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; background: var(--bg-card-highlight); }
+.landing-product-bar img { width: 24px; height: 24px; border-radius: 6px; }
+.landing-product-bar .ui-badge { margin-left: auto; }
+.landing-product-body { padding: 22px; }
+.mini-head { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-sub); }
+.mini-title { margin-top: 10px; font-size: 19px; font-weight: 650; }
+.mini-progress { height: 4px; margin-top: 14px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.mini-progress span { display: block; height: 100%; background: var(--primary); }
+.mini-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 18px; padding: 14px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.mini-stats div { display: flex; flex-direction: column; gap: 2px; }
+.mini-stats strong { font-size: 18px; }
+.mini-stats small { font-size: 10px; color: var(--text-sub); }
+.mini-list { margin-top: 6px; }
+.mini-list div { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.mini-list div:last-child { border-bottom: 0; }
+.landing-stats { border-bottom: 1px solid var(--border); background: var(--bg-card); }
+.landing-stats-grid { display: grid; grid-template-columns: repeat(4,1fr); padding-top: 22px; padding-bottom: 22px; }
+.landing-stats-grid div { display: flex; flex-direction: column; gap: 4px; padding-left: 22px; border-left: 1px solid var(--border); }
+.landing-stats-grid div:first-child { border-left: 0; padding-left: 0; }
+.landing-stats-grid strong { font-size: 24px; letter-spacing: -.03em; }
+.landing-stats-grid span { font-size: 11px; color: var(--text-sub); }
+.landing-section { padding-top: 76px; padding-bottom: 76px; }
+.landing-section-head { max-width: 620px; margin-bottom: 26px; }
+.landing-section-head h2 { margin-top: 9px; font-size: 30px; line-height: 1.25; letter-spacing: -.035em; font-weight: 680; }
+.landing-section-head p { margin-top: 8px; color: var(--text-sub); font-size: 14px; }
+.landing-feature-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.landing-feature { padding: 22px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); }
+.feature-index { font-size: 11px; color: var(--primary); font-weight: 700; }
+.landing-feature h3 { margin-top: 16px; font-size: 16px; font-weight: 650; }
+.landing-feature p { margin-top: 7px; font-size: 12px; line-height: 1.7; color: var(--text-sub); }
+.landing-flow { border-top: 1px solid var(--border); }
+.landing-flow-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+.landing-flow-grid div { display: flex; flex-direction: column; gap: 8px; }
+.landing-flow-grid b { font-size: 12px; color: var(--primary); }
+.landing-flow-grid strong { font-size: 17px; }
+.landing-flow-grid span { font-size: 12px; line-height: 1.7; color: var(--text-sub); }
+.landing-faq { max-width: 850px; border-top: 1px solid var(--border); }
+.faq-row { padding-left: 18px; padding-right: 18px; }
+.faq-answer { padding-top: 8px; line-height: 1.75; }
+.landing-cta { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--primary) 5%, var(--bg-body)); }
+.landing-cta-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-top: 40px; padding-bottom: 40px; }
+.landing-cta h2 { margin-top: 8px; font-size: 24px; letter-spacing: -.03em; }
+.landing-cta-inner > div:last-child { display: flex; gap: 8px; flex-wrap: wrap; }
+.landing-footer { padding: 22px 0; }
+.landing-footer-inner { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; color: var(--text-quote); font-size: 11px; }
+.landing-footer-inner div { display: flex; gap: 14px; margin-left: auto; }
+.landing-footer a:hover { color: var(--text-main); }
+@media (max-width: 900px) { .landing-hero-grid { grid-template-columns: 1fr; gap: 36px; } .landing-product { max-width: 460px; transform: none; } .landing-feature-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 700px) { .landing-links, .landing-nav-actions > .ui-btn { display: none; } .landing-menu-btn { display: grid; place-items: center; } .landing-mobile-menu { display: flex; flex-direction: column; padding: 8px 22px 18px; gap: 2px; border-top: 1px solid var(--border); background: var(--bg-card); } .landing-mobile-menu a { padding: 12px 0; font-size: 13px; border-bottom: 1px solid var(--border); } .landing-hero { padding-top: 52px; } .landing-hero h1 { font-size: 38px; } .landing-stats-grid { grid-template-columns: repeat(2,1fr); gap: 16px; } .landing-stats-grid div:nth-child(3) { border-left: 0; padding-left: 0; } .landing-section { padding-top: 52px; padding-bottom: 52px; } .landing-feature-grid, .landing-flow-grid { grid-template-columns: 1fr; } .landing-cta-inner { align-items: flex-start; flex-direction: column; } .landing-footer-inner div { margin-left: 0; } }
 </style>

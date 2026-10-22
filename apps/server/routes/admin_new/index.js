@@ -37,5 +37,6 @@ router.use('/schedule', require('./schedule'));
 router.use('/reports', require('./reports'));
 router.use('/exams', require('./exams'));
 router.use('/access-control', require('./access_control'));
+router.use('/exports', require('./export_credentials'));
 
 module.exports = router;

@@ -19,6 +19,23 @@ const majors = ref([]);
 const subjects = ref([]);
 const selectedMajor = ref(null);
 const loadingSubjects = ref(false);
+const subjectSearch = ref("");
+const filteredMajors = computed(() => {
+  const q = subjectSearch.value.trim().toLowerCase();
+  if (!q) return majors.value;
+  return majors.value.filter(m => m.name.toLowerCase().includes(q));
+});
+const filteredSubjects = computed(() => {
+  const q = subjectSearch.value.trim().toLowerCase();
+  if (!q) return subjects.value;
+  return subjects.value.filter(s => s.name.toLowerCase().includes(q));
+});
+const nearestCountdown = computed(() => {
+  const rows = countdowns.value.map(c => ({ ...c, days: Number(getDaysLeft(c.target_date)) })).filter(c => Number.isFinite(c.days));
+  return rows.sort((a,b) => a.days - b.days)[0] || null;
+});
+const scrollToSubjects = () => document.getElementById("subjects")?.scrollIntoView({ behavior: "smooth", block: "start" });
+const refreshHome = async () => { await Promise.all([fetchHomeData(), fetchMajors(), fetchStats(), initDailyContent()]); };
 
 // ... (Daily Content and Stats logic remains same)
 
@@ -240,245 +257,103 @@ const getLinkIcon = (name) => {
 </script>
 
 <template>
-  <div class="min-h-screen pb-20 transition-colors duration-500">
-    
-    <!-- Hero Header -->
-    <header class="relative pt-12 pb-20 px-6 overflow-hidden">
-      <!-- Background Blobs -->
-      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full z-0 pointer-events-none">
-        <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/10 rounded-full blur-[80px] animate-pulse"></div>
-        <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 rounded-full blur-[80px] animate-pulse" style="animation-delay: 2s"></div>
+  <div class="ui-page ui-page-wide home-page">
+    <header class="ui-page-head home-head">
+      <div>
+        <p class="ui-eyebrow">{{ currentDate }} · 学习首页</p>
+        <h1 class="ui-title">{{ greeting }}，{{ username }}</h1>
+        <p class="ui-subtitle">{{ currentDaily.quote }}</p>
       </div>
-
-      <div class="relative z-10 max-w-4xl mx-auto">
-        <div class="flex justify-between items-start mb-8">
-          <div>
-            <div class="flex items-baseline gap-2 mb-1">
-               <h1 class="text-3xl md:text-4xl font-black text-slate-800 dark:text-white tracking-tight">
-                {{ greeting }}, <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">{{ username }}</span>
-              </h1>
-              <span class="text-2xl animate-bounce">👋</span>
-            </div>
-            <p class="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
-              {{ currentDaily.quote }}
-            </p>
-          </div>
-          
-          <div class="flex items-center gap-3">
-             <button @click="toggleTheme" class="w-10 h-10 rounded-full glass-card flex items-center justify-center text-lg transition-transform active:scale-90 hover:bg-white/50 dark:hover:bg-slate-700/50">
-                {{ isDark ? "🌙" : "🌞" }}
-             </button>
-             <button @click="handleLogout" class="w-10 h-10 rounded-full glass-card flex items-center justify-center text-rose-500 transition-transform active:scale-90 hover:bg-rose-50 dark:hover:bg-rose-900/30">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
-                </svg>
-             </button>
-          </div>
-        </div>
-
-        <!-- Daily Cards Row -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <!-- Proverb -->
-             <div class="glass-card p-5 relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
-                 <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                     <span class="text-6xl">💡</span>
-                 </div>
-                 <div class="relative z-10">
-                     <span class="inline-block px-2 py-1 round-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[10px] font-bold rounded-md mb-2">每日谚语</span>
-                     <p class="font-bold text-slate-700 dark:text-slate-200 text-lg mb-1">{{ currentDaily.proverb.en }}</p>
-                     <p class="text-sm text-slate-500 dark:text-slate-400">{{ currentDaily.proverb.zh }}</p>
-                 </div>
-             </div>
-             
-             <!-- Poem -->
-             <div class="glass-card p-5 relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
-                 <div class="absolute bottom-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                     <span class="text-6xl">📜</span>
-                 </div>
-                 <div class="relative z-10">
-                     <span class="inline-block px-2 py-1 round-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-[10px] font-bold rounded-md mb-2">每日诗词</span>
-                     <p class="font-serif font-bold text-slate-700 dark:text-slate-200 text-lg mb-1">{{ currentDaily.poem.line }}</p>
-                     <p class="text-sm text-slate-500 dark:text-slate-400 text-right">—— {{ currentDaily.poem.src }}</p>
-                 </div>
-             </div>
-        </div>
-      </div>
+      <button class="ui-btn ui-btn-outline ui-btn-sm" @click="refreshHome">刷新</button>
     </header>
 
-    <main class="max-w-4xl mx-auto px-6 space-y-10 -mt-6 relative z-20">
-      
-      <!-- Quick Stats -->
-      <section class="grid grid-cols-2 gap-4">
-          <div class="glass-card p-6 flex flex-col items-center justify-center text-center hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors">
-              <span class="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-br from-indigo-500 to-blue-500 mb-1">{{ totalQuestions }}</span>
-              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">刷题总数</span>
-          </div>
-          <div class="glass-card p-6 flex flex-col items-center justify-center text-center hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors">
-              <span class="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-br from-emerald-500 to-teal-500 mb-1">{{ correctRate }}%</span>
-              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">正确率</span>
-          </div>
-      </section>
-
-      <!-- Countdowns -->
-      <section v-if="countdowns.length > 0">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <span class="text-xl">⏳</span> 倒计时
-            </h2>
+    <section class="home-continue ui-card ui-card-pad">
+      <div class="ui-row-between">
+        <div class="ui-grow">
+          <span class="ui-badge ui-badge-blue">继续学习</span>
+          <h2 class="home-continue-title">{{ selectedMajor ? selectedMajor.name : "今天从哪一科开始？" }}</h2>
+          <p class="ui-small ui-muted">{{ selectedMajor ? "已选择专业，从下方科目列表继续。" : "按专业和科目查找，立即进入练习。" }}</p>
         </div>
-        <div class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-2 px-2">
-            <div v-for="cd in countdowns" :key="cd.id" 
-                 class="min-w-[160px] glass-card p-4 flex flex-col justify-between h-[100px] relative overflow-hidden group"
-            >
-                <div>
-                     <span class="text-xs font-bold text-slate-400 dark:text-slate-500">{{ cd.title }}</span>
-                     <div class="flex items-baseline gap-1 mt-1">
-                         <span class="text-2xl font-black text-slate-800 dark:text-white">{{ getDaysLeft(cd.target_date) }}</span>
-                         <span class="text-xs text-slate-400">天</span>
-                     </div>
-                </div>
-                 <div class="absolute bottom-2 right-2 text-3xl opacity-10 group-hover:scale-125 transition-transform">
-                    {{ getIconForCountdown(cd.title) }}
-                 </div>
-            </div>
+        <button class="ui-btn ui-btn-dark" @click="scrollToSubjects">选择科目 <span aria-hidden="true">→</span></button>
+      </div>
+    </section>
+
+    <section class="ui-grid ui-grid-4 home-metrics" aria-label="学习概览">
+      <div class="ui-card ui-card-pad ui-metric"><span class="ui-metric-value">{{ totalQuestions }}</span><span class="ui-metric-label">累计作答</span></div>
+      <div class="ui-card ui-card-pad ui-metric"><span class="ui-metric-value">{{ correctRate }}%</span><span class="ui-metric-label">整体正确率</span></div>
+      <div class="ui-card ui-card-pad ui-metric"><span class="ui-metric-value">{{ majors.length }}</span><span class="ui-metric-label">可浏览专业</span></div>
+      <div class="ui-card ui-card-pad ui-metric"><span class="ui-metric-value">{{ nearestCountdown ? nearestCountdown.days : "—" }}</span><span class="ui-metric-label">{{ nearestCountdown ? nearestCountdown.title : "考试倒计时" }}</span></div>
+    </section>
+
+    <nav class="home-quick-links" aria-label="常用入口">
+      <RouterLink to="/analysis" class="ui-card home-quick-item"><span>学情分析</span><span class="ui-faint">查看趋势 ›</span></RouterLink>
+      <RouterLink to="/data" class="ui-card home-quick-item"><span>学习数据</span><span class="ui-faint">导入与导出 ›</span></RouterLink>
+      <RouterLink to="/score-query" class="ui-card home-quick-item"><span>成绩查询</span><span class="ui-faint">联考成绩 ›</span></RouterLink>
+      <RouterLink to="/export" class="ui-card home-quick-item"><span>题库导出</span><span class="ui-faint">授权导出 ›</span></RouterLink>
+    </nav>
+
+    <div class="home-body">
+      <section id="subjects" class="ui-card ui-card-pad subject-section">
+        <div class="ui-row-between">
+          <div><h2 class="ui-section-title">题库</h2><p class="ui-small ui-muted">选择专业后进入科目</p></div>
+          <span v-if="loadingSubjects" class="ui-spinner" aria-label="正在加载科目"></span>
+        </div>
+        <div class="ui-search home-search">
+          <svg class="ui-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          <input v-model="subjectSearch" class="ui-input" :placeholder="selectedMajor ? '搜索科目' : '搜索专业'" :aria-label="selectedMajor ? '搜索科目' : '搜索专业'" />
+        </div>
+        <div class="ui-row home-major-tabs">
+          <button class="ui-chip ui-chip-soft" :class="{active:selectedMajor===null}" @click="selectedMajor=null;subjects=[]">全部专业</button>
+          <button v-for="major in filteredMajors.slice(0, 8)" :key="major.id" class="ui-chip ui-chip-soft" :class="{active:selectedMajor?.id===major.id}" @click="selectMajor(major)">{{ major.name.replace(/类$/, "") }}</button>
+        </div>
+
+        <div v-if="selectedMajor" class="subject-list">
+          <div class="ui-row-between subject-list-head"><button class="ui-btn ui-btn-ghost ui-btn-sm" @click="selectedMajor=null;subjects=[]">← 全部专业</button><span class="ui-small ui-muted">{{ selectedMajor.name }}</span></div>
+          <div v-if="loadingSubjects" class="ui-loading"><span class="ui-spinner mx-auto"></span><p class="mt-3">正在加载科目</p></div>
+          <div v-else-if="filteredSubjects.length === 0" class="ui-empty">当前专业暂无匹配科目</div>
+          <div v-else class="ui-list-card">
+            <button v-for="subject in filteredSubjects" :key="subject.id" class="ui-row-button subject-row" @click="goExam(subject)">
+              <span class="subject-mark">{{ subject.name.slice(0,1) }}</span>
+              <span class="ui-grow"><strong>{{ subject.name }}</strong><small class="block ui-small ui-muted">{{ subject.question_count ? `${subject.question_count} 题` : "查看题目" }}</small></span>
+              <span class="ui-faint">开始 ›</span>
+            </button>
+          </div>
+        </div>
+        <div v-else class="major-directory">
+          <button v-for="major in filteredMajors" :key="major.id" class="ui-row-button major-row" @click="selectMajor(major)">
+            <span class="subject-mark">{{ major.name.slice(0,1) }}</span>
+            <span class="ui-grow"><strong>{{ major.name }}</strong><small class="block ui-small ui-muted">查看科目与练习</small></span>
+            <span class="ui-faint">›</span>
+          </button>
         </div>
       </section>
 
-      <!-- Majors & Subjects -->
-      <section>
-          <div class="flex items-center gap-3 mb-6">
-               <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                   <span class="text-2xl">📚</span> 题库分类
-               </h2>
-               <div v-if="loading" class="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
+      <aside class="home-aside ui-stack">
+        <section class="ui-card ui-card-pad">
+          <div class="ui-section-head"><h2 class="ui-section-title">考试倒计时</h2></div>
+          <div v-if="countdowns.length" class="countdown-list">
+            <div v-for="cd in countdowns" :key="cd.id" class="countdown-row"><span class="ui-grow">{{ cd.title }}</span><strong>{{ getDaysLeft(cd.target_date) }} 天</strong></div>
           </div>
+          <p v-else class="ui-small ui-muted">暂未设置考试倒计时</p>
+        </section>
+        <section class="ui-card ui-card-pad daily-note">
+          <span class="ui-eyebrow">每日一句</span>
+          <p class="daily-primary">{{ currentDaily.proverb.en }}</p>
+          <p class="ui-small ui-muted">{{ currentDaily.proverb.zh }}</p>
+          <div class="ui-divider my-4"></div>
+          <p class="ui-small" style="color:var(--text-main)">{{ currentDaily.poem.line }}</p>
+          <p class="ui-small ui-faint text-right mt-1">{{ currentDaily.poem.src }}</p>
+        </section>
+        <section v-if="externalLinks.length" class="ui-card ui-card-pad">
+          <div class="ui-section-head"><h2 class="ui-section-title">常用资源</h2></div>
+          <a v-for="link in externalLinks" :key="link.id" :href="link.url" target="_blank" rel="noopener" class="resource-link">{{ link.name }}<span>↗</span></a>
+        </section>
+      </aside>
+    </div>
 
-          <!-- Majors Grid -->
-           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-6">
-              <button
-                v-for="major in majors"
-                :key="major.id"
-                @click="selectMajor(major)"
-                class="relative h-20 glass-card flex flex-col items-center justify-center p-2 transition-all duration-300 group overflow-hidden"
-                :class="selectedMajor?.id === major.id ? 'ring-2 ring-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20' : 'hover:bg-white/60 dark:hover:bg-slate-800/60'"
-              >
-                  <span class="text-sm font-bold text-slate-700 dark:text-slate-200 z-10 relative text-center leading-tight">{{ major.name }}</span>
-                  
-                  <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/0 to-purple-500/0 group-hover:from-indigo-500/5 group-hover:to-purple-500/5 transition-colors"></div>
-                  
-                  <!-- Active Indicator -->
-                  <div v-if="selectedMajor?.id === major.id" class="absolute bottom-1 w-1 h-1 bg-indigo-500 rounded-full"></div>
-              </button>
-          </div>
-
-          <!-- Subjects List (Collapse/Expand) -->
-          <div v-if="selectedMajor" class="animate-fade-in-up bg-white/50 dark:bg-slate-800/50 rounded-[32px] p-6 border border-white/50 dark:border-slate-700/50 backdrop-blur-sm">
-               <div class="flex justify-between items-center mb-4">
-                   <h3 class="font-bold text-slate-700 dark:text-slate-200">{{ selectedMajor.name }} - 科目</h3>
-                   <span class="text-xs bg-slate-200 dark:bg-slate-700 text-slate-500 px-2 py-1 rounded-full">{{ subjects.length }} 个科目</span>
-               </div>
-               
-               <div v-if="loadingSubjects" class="py-8 text-center">
-                   <div class="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto"></div>
-               </div>
-               
-               <div v-else-if="subjects.length === 0" class="text-center py-8 text-slate-400 text-sm">
-                   暂无数据
-               </div>
-
-               <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                   <button
-                        v-for="subject in subjects"
-                        :key="subject.id"
-                        @click="goExam(subject)"
-                        class="flex items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-lg hover:shadow-indigo-500/10 transition-all group text-left"
-                   >
-                        <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 flex items-center justify-center text-lg shadow-inner">
-                            📝
-                        </div>
-                        <div class="flex-1">
-                            <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{{ subject.name }}</h4>
-                            <p class="text-[10px] text-slate-400 mt-0.5">点击开始刷题</p>
-                        </div>
-                        <span class="text-slate-300 group-hover:translate-x-1 transition-transform">➜</span>
-                   </button>
-               </div>
-          </div>
-      </section>
-
-      <!-- External Links -->
-      <section v-if="externalLinks.length > 0">
-           <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-6">
-               <span class="text-2xl">🔗</span> 常用资源
-           </h2>
-           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-               <a v-for="(link, index) in externalLinks" :key="link.id"
-                  :href="link.url" target="_blank"
-                  class="glass-card p-4 flex items-center gap-4 hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors group"
-               >
-                   <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-lg"
-                        :class="index % 2 === 0 ? 'bg-gradient-to-br from-pink-500 to-rose-500' : 'bg-gradient-to-br from-cyan-400 to-blue-500'"
-                   >
-                       {{ getLinkIcon(link.name) }}
-                   </div>
-                   <div class="flex-1 min-w-0">
-                       <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{{ link.name }}</h3>
-                       <p class="text-[10px] text-slate-400 truncate">{{ link.url }}</p>
-                   </div>
-               </a>
-           </div>
-      </section>
-
-      <!-- Footer Actions -->
-      <section class="pb-10 pt-4">
-          <div class="grid grid-cols-3 gap-3 md:flex md:justify-center md:gap-4">
-              <!-- Admin Button -->
-              <router-link
-                v-if="userRole === 'admin' || userRole === 'demo'"
-                to="/admin"
-                class="glass-card px-3 py-3 md:px-6 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-3 hover:-translate-y-1 transition-transform"
-              >
-                  <span class="text-xl">⚙️</span>
-                  <span class="font-bold text-xs md:text-base text-slate-700 dark:text-slate-200 whitespace-nowrap">后台管理</span>
-              </router-link>
-              
-              <!-- Data Center -->
-              <router-link
-                to="/data"
-                class="glass-card px-3 py-3 md:px-6 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-3 hover:-translate-y-1 transition-transform"
-              >
-                  <span class="text-xl">💾</span>
-                  <span class="font-bold text-xs md:text-base text-slate-700 dark:text-slate-200 whitespace-nowrap">数据中心</span>
-              </router-link>
-
-              <!-- Analysis Button -->
-              <router-link
-                to="/analysis"
-                class="glass-card px-3 py-3 md:px-6 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-3 hover:-translate-y-1 transition-transform ring-2 ring-indigo-500/20"
-              >
-                  <span class="text-xl">📊</span>
-                  <span class="font-bold text-xs md:text-base text-slate-700 dark:text-slate-200 whitespace-nowrap">学情分析</span>
-              </router-link>
-          </div>
-      </section>
-
-    </main>
-
-    <!-- Simple Footer -->
-    <footer class="text-center text-slate-400 text-xs py-6 space-y-2 pb-24 md:pb-6">
-        <p>© 2026 沧烁 . All rights reserved.</p>
-        <p>
-          <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" class="hover:text-slate-300 transition-colors inline-flex items-center justify-center gap-1">
-            🛡️ 蜀ICP备2025126838号-1
-          </a>
-        </p>
-        <p>
-          <a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51172202000160" target="_blank" rel="noopener" class="hover:text-slate-300 transition-colors inline-flex items-center justify-center gap-1">
-            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="公安备案" class="w-4 h-4"> 川公网安备51172202000160号
-          </a>
-        </p>
+    <footer class="home-footer">
+      <span>© 2026 沧烁</span><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">蜀ICP备2025126838号-1</a><a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51172202000160" target="_blank" rel="noopener">川公网安备51172202000160号</a>
     </footer>
-
     <Toast ref="toast" />
     <ConfirmDialog ref="confirmDialog" />
   </div>

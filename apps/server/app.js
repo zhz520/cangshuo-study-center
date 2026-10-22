@@ -42,6 +42,7 @@ const dataRoutes = require('./routes/data');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/data', dataRoutes);
+app.use('/api/data', require('./routes/exports'));
 app.use('/api/public', require('./routes/public'));
 app.use('/api/admin', require('./routes/admin_new'));
 app.use('/api/upload', require('./routes/upload'));
