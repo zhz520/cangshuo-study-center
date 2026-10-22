@@ -1,0 +1,17 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const htmlPath = path.join(__dirname, 'core-review.html');
+let html = fs.readFileSync(htmlPath, 'utf8');
+const css = fs.readFileSync(path.join(__dirname, 'reference.css'), 'utf8');
+const js = fs.readFileSync(path.join(__dirname, 'reference.js'), 'utf8');
+const cssStart = html.indexOf('/* Screenshot reference:');
+const cssEnd = html.indexOf('</style>', cssStart);
+if (cssStart < 0 || cssEnd < 0) throw new Error('Reference style markers missing');
+html = html.slice(0, cssStart) + css + '\n:root{--mountain:url("assets/study-landscape.png")}\n' + html.slice(cssEnd);
+const jsStart = html.indexOf('// REFERENCE_START');
+const jsEnd = html.indexOf('// REFERENCE_END', jsStart);
+if (jsStart < 0 || jsEnd < 0) throw new Error('Reference script markers missing');
+html = html.slice(0, jsStart) + '// REFERENCE_START\n' + js + '\n' + html.slice(jsEnd);
+for (const script of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)) new Function(script[1]);
+fs.writeFileSync(htmlPath, html);
+console.log('Reference preview rebuilt; JavaScript syntax OK');

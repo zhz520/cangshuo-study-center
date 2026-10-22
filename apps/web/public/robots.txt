@@ -1,0 +1,24 @@
+# robots.txt for study.zhzgo.cn
+User-agent: *
+Allow: /
+Allow: /download
+Allow: /score-query
+Allow: /article/*
+Allow: /agreement
+Allow: /privacy
+
+# Disallow private/admin pages
+Disallow: /home
+Disallow: /exam/
+Disallow: /stats
+Disallow: /analysis
+Disallow: /data
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://study.zhzgo.cn/sitemap.xml
+
+# Crawl-delay (be polite)
+Crawl-delay: 1

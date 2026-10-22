@@ -1,0 +1,18 @@
+{
+  "name": "qq-bot",
+  "version": "2.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "QQ Bot - Webhook Mode",
+  "dependencies": {
+    "axios": "^1.13.5",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.0"
+  }
+}

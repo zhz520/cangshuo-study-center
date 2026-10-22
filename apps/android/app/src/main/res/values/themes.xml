@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Make status bar fully transparent so Compose can draw behind it -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <!-- Dark background: use light (white) status bar icons -->
+        <item name="android:windowLightStatusBar">true</item>
+        <!-- Splash screen: gradient background with centered icon -->
+        <item name="android:windowBackground">@drawable/splash_screen</item>
+    </style>
+
+    <style name="MyDialogStyle" parent="@android:style/Theme.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowFrame">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+    <style name="JPushTheme" parent="@android:style/Theme.Translucent.NoTitleBar" />
+
+</resources>

@@ -1,8 +1,57 @@
-node_modules
-dist
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Dependencies
+**/node_modules/
+
+# Build caches and generated output
+**/build/
+**/.gradle/
+**/.kotlin/
+**/dist/
+**/__pycache__/
+*.pyc
+
+# IDE and local machine files
+**/.idea/
+**/.vscode/
+*.iml
+**/local.properties
+
+# Secrets and runtime configuration
+**/.env
+**/.env.local
+**/.env.*.local
+**/*.pem
+**/*.key
+**/*.keystore
+**/*.jks
+**/keystore.properties
+apps/server/config/jpush-config.json
+apps/android/app/google-services.json
+
+# Runtime uploads and generated databases
+apps/server/public/uploads/*
+!apps/server/public/uploads/README.md
+*.sqlite
+*.db
+
+# Private source data
+data/legacy-question-bank/*.json
+
+# Operational evidence and binaries
+archive/legacy-*/
+ops/baseline/
+ops/releases/
+ops/reports/
+artifacts/**/*.apk
+artifacts/**/*.aab
+*.apk
+*.aab
+*.ipa
+
+# Logs and temporary files
 *.log
-.vscode
+*.tmp
+build_*.txt
+build_error*.txt
+build_output*.txt
+.DS_Store
+Thumbs.db
