@@ -28,7 +28,7 @@ archive/    旧脚本和迁移残留，不参与运行
 | --- | --- |
 | Web | <https://study.zhzgo.cn/> |
 | API | <https://studyapi.zhzgo.cn/> |
-| Android 调试包 | [artifacts/android/app-debug-1.1.2-20261022.apk](artifacts/android/app-debug-1.1.2-20261022.apk) |
+| Android 调试包 | 本机 `artifacts/android/app-debug-1.1.2-20261022.apk`（公开仓库不包含 APK） |
 | 项目架构 | [docs/architecture.md](docs/architecture.md) |
 | 安全与会员边界 | [docs/security.md](docs/security.md) |
 | AI 协作规范 | [docs/vibe-coding.md](docs/vibe-coding.md) |

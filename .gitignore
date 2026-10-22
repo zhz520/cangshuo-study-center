@@ -41,6 +41,7 @@ archive/legacy-*/
 ops/baseline/
 ops/releases/
 ops/reports/
+artifacts/android/*
 artifacts/**/*.apk
 artifacts/**/*.aab
 *.apk
