@@ -74,6 +74,7 @@ const db = {
       return [{ affectedRows: 1 }];
     }
     if (sql.startsWith('SELECT COUNT(*) AS total FROM questions q')) {
+      assert.match(sql, /FROM questions q WHERE q\.is_active = 1/);
       return [[{ total: visibleRows(sql, params).length }]];
     }
     if (sql.startsWith('SELECT q.id, q.type')) {

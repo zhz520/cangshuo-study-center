@@ -1,16 +1,6 @@
 const crypto = require("crypto");
 const axios = require("axios");
-
-const CONFIGS = {
-  web: {
-    id: process.env.GEETEST_WEB_ID,
-    key: process.env.GEETEST_WEB_KEY,
-  },
-  android: {
-    id: process.env.GEETEST_ANDROID_ID,
-    key: process.env.GEETEST_ANDROID_KEY,
-  },
-};
+const { geetestConfig } = require("./integrationSettings");
 
 const GEETEST_URL = "https://gcaptcha4.geetest.com/validate";
 
@@ -24,15 +14,13 @@ const GEETEST_URL = "https://gcaptcha4.geetest.com/validate";
  * @returns {Promise<boolean>} 是否验证成功
  */
 async function verifyGeetest(lot_number, captcha_output, pass_token, gen_time, client_type) {
-  if (!lot_number || !captcha_output || !pass_token || !gen_time || !client_type) {
-    return false;
-  }
-
-  const config = CONFIGS[client_type];
-  if (!config || !config.id || !config.key) {
-    console.error("Unknown geetest client_type:", client_type);
-    return false;
-  }
+  const type = client_type === "android" ? "android" : "web";
+  let config;
+  try { config = await geetestConfig(type); }
+  catch { return false; }
+  if (!config.enabled) return true;
+  if (!config.id || !config.key) return false;
+  if (!lot_number || !captcha_output || !pass_token || !gen_time) return false;
 
   const sign_token = crypto
     .createHmac("sha256", config.key)

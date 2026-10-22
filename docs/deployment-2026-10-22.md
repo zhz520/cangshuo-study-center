@@ -58,3 +58,13 @@
 - 当前机器没有连接 Android 设备，调试 APK 位于 `artifacts/android/app-debug-1.1.2-20261022.apk`，未做真机安装、TalkBack 和不同 ROM 验收，也不是签名正式发布包。
 - 历史暴露过的 AI、SMTP、极验等第三方凭据仍应在对应平台轮换；本次只完成服务端私有配置迁移。 数据库旧密码曾在历史脚本和版本历史中出现，虽然 MySQL 仅本机监听且防火墙未放行 3306，仍应安排一次数据库账号密码轮换并同步私有配置。
 - 加密保护数据库内容和转储，无法阻止已授权用户截图、录屏或人工保存可见题目。
+
+## 后续发布：题库导出与第三方服务配置
+
+2026-10-22 追加两次发布，均先完整备份数据库、API 与 Web，失败自动回滚代码。
+
+- 发布一（15:25 UTC）：新增 question_export_credentials / question_export_logs 两张增量表，上线 /export 与 /admin/exports，16 项导出校验和 51 项接口回归通过。
+- 发布二（15:41 UTC）：上线管理后台「第三方服务」，极验改为数据库配置优先，AI 改为 OpenAI 兼容配置，支持题目讲解、深度讲解、学情分析三种模型角色；16 项导出校验和 53 项接口回归通过。
+- 两次发布前后：users 53、user_progress 46,591 → 46,592（真实学习记录增长）、user_favorites 680、exam_records 72；questions 133,444 全部密文，exam_paper_questions 834 全部密文，明文计数 0，题目内容指纹未变化。
+- 备份：/www/backup/codex/study-export-20261022T152529Z（约 662 MB 数据库包）和 /www/backup/codex/study-export-20261022T154124Z；均含 SHA-256 manifest、API/Web 覆盖前归档、导出与接口回归报告。
+- 管理后台新增 /admin/integrations；极验 Web Captcha ID 由 /api/public/auth-config 动态下发，AI 地址必须是公网 HTTPS。

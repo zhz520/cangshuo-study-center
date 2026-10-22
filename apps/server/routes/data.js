@@ -6,6 +6,7 @@ const axios = require("axios");
 const SECRET_KEY = require("../config/security").jwtConfig().access;
 
 const { verifyToken } = require("../middleware/authMiddleware");
+const { aiRequest } = require("../services/integrationSettings");
 const { rateLimit, reserveAi, sendError } = require("../services/securityLimits");
 const { assertQuestion } = require("../services/questionAccess");
 const { sendPushNotification } = require("../services/notificationService");
@@ -686,10 +687,11 @@ router.get("/analysis", verifyToken, async (req, res) => {
 
 语气亲切鼓励但专业。纯文本分点输出，禁止使用 Markdown 标题或加粗语法。`;
 
+        const ai = await aiRequest("analysis");
         const aiRes = await axios.post(
-          "https://api.deepseek.com/v1/chat/completions",
+          ai.url,
           {
-            model: "deepseek-chat",
+            model: ai.model,
             messages: [
               { role: "system", content: "你是烁学平台的 AI 学情诊断师。用简洁中文分析学生数据，给出个性化诊断。纯文本分点输出，禁止使用 Markdown 标题或加粗。" },
               { role: "user", content: prompt },
@@ -697,11 +699,8 @@ router.get("/analysis", verifyToken, async (req, res) => {
             temperature: 0.7,
           },
           {
-            headers: {
-              Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            timeout: 10000, // 10s timeout to not block UI too long
+            headers: ai.headers,
+            timeout: 10000,
           },
         );
         aiDiagnosis = aiRes.data.choices[0]?.message?.content || null;
@@ -734,7 +733,7 @@ router.post("/ai-explain", verifyToken, rateLimit("ai-request", 10), async (req,
   const { question, options, userAnswer, correctAnswer, type } = req.body;
 
   try {
-    if (!process.env.DEEPSEEK_API_KEY) return res.status(503).json({ error: "AI 服务尚未配置" });
+    const ai = await aiRequest("reasoning");
     const quota = await reserveAi(req);
     const dailyLimit = quota.limit;
     const currentUsage = dailyLimit - quota.remaining - 1;
@@ -820,19 +819,17 @@ ${optionsStr ? `\n【选项】\n${optionsStr}` : ""}
 如有代码请用 Markdown 代码块包裹。语气亲切自然。`;
 
     const aiRes = await axios.post(
-      "https://api.deepseek.com/v1/chat/completions",
+      ai.url,
       {
-        model: "deepseek-reasoner",
+        model: ai.model,
         messages: [
           { role: "user", content: `【系统指令】你是烁学平台的 AI 助教，擅长用通俗易懂的方式讲解各类题目。你必须先独立审题验证答案的正确性，如果题库答案有误要主动指出。支持 Markdown（代码块、列表）。回复控制在 500 字以内，结构清晰。\n\n` + prompt },
         ],
         stream: true,
       },
       {
-        headers: {
-          Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: ai.headers,
+        timeout: ai.timeout,
         responseType: "stream",
       },
     );
@@ -921,7 +918,7 @@ router.post("/ai-analysis", verifyToken, rateLimit("ai-request", 10), async (req
   } = req.body;
 
   try {
-    if (!process.env.DEEPSEEK_API_KEY) return res.status(503).json({ error: "AI 服务尚未配置" });
+    const ai = await aiRequest("analysis");
     await reserveAi(req);
     // Build subject summary
     const subjectLines =
@@ -997,9 +994,9 @@ ${typeLines}
 用 Markdown 格式输出，控制在 500 字以内。`;
 
     const aiRes = await axios.post(
-      "https://api.deepseek.com/v1/chat/completions",
+      ai.url,
       {
-        model: "deepseek-chat",
+        model: ai.model,
         messages: [
           {
             role: "system",
@@ -1011,11 +1008,8 @@ ${typeLines}
         temperature: 0.7,
       },
       {
-        headers: {
-          Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 30000,
+        headers: ai.headers,
+        timeout: ai.timeout,
       },
     );
 

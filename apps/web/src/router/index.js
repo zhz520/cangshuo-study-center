@@ -167,6 +167,11 @@ const router = createRouter({
                     path: 'exports',
                     name: 'admin-exports',
                     component: () => import('../views/admin/ExportAuthorization.vue')
+                },
+                {
+                    path: 'integrations',
+                    name: 'admin-integrations',
+                    component: () => import('../views/admin/IntegrationsView.vue')
                 }
             ]
         },

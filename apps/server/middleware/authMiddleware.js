@@ -33,7 +33,7 @@ function isAdmin(req, res, next) {
     const role = req.account?.role;
     if (role !== 'admin' && role !== 'demo') return res.status(403).json({ message: '需要管理员权限' });
     if (role === 'demo') {
-        if (!['GET', 'OPTIONS', 'HEAD'].includes(req.method) || /^\/(questions|exams|reports|settings|users|cards|exports)(\/|$)/i.test(req.path)) {
+        if (!['GET', 'OPTIONS', 'HEAD'].includes(req.method) || /^\/(questions|exams|reports|settings|users|cards|exports|integrations)(\/|$)/i.test(req.path)) {
             return res.status(403).json({ message: '演示账号无权执行此操作', code: 'DEMO_ACCESS_DENIED' });
         }
     }

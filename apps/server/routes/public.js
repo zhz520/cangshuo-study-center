@@ -6,6 +6,16 @@ const { parseVideoWatermark } = require('../utils/videoParser');
 const { PUBLIC_SETTINGS, publicSettings } = require('../services/publicSettings');
 
 // Get all public homepage data
+router.get('/auth-config', async (req, res) => {
+    try {
+        const { publicAuthConfig } = require('../services/integrationSettings');
+        res.set('Cache-Control', 'public, max-age=60');
+        res.json(await publicAuthConfig());
+    } catch {
+        res.status(503).json({ error: '认证配置暂不可用' });
+    }
+});
+
 router.get('/home-data', async (req, res) => {
     try {
         const connection = await pool.getConnection();
@@ -132,7 +142,7 @@ router.post('/score-analysis', verifyToken, require('../services/securityLimits'
     }
 
     try {
-        if (!process.env.DEEPSEEK_API_KEY) return res.status(503).json({ success: false, error: 'AI 服务尚未配置' });
+        const ai = await require('../services/integrationSettings').aiRequest('analysis');
         await require('../services/securityLimits').reserveAi(req);
         // Parse score details
         let details = {};
@@ -188,9 +198,9 @@ ${subjectLines}
 纯文本分点输出，可使用 emoji 增加可读性。不要使用 Markdown 标题语法或加粗语法。`;
 
         const aiRes = await axios.post(
-            'https://api.deepseek.com/v1/chat/completions',
+            ai.url,
             {
-                model: 'deepseek-chat',
+                model: ai.model,
                 messages: [
                     { role: 'system', content: '你是烁学平台的 AI 升学规划导师，专注于四川省中职对口高考（职教高考）领域。你需要基于考生的真实成绩数据，给出深度个性化的分析和建议。语气专业但有温度，引用具体数据，避免泛泛而谈。' },
                     { role: 'user', content: prompt }
@@ -198,13 +208,7 @@ ${subjectLines}
                 temperature: 0.75,
                 max_tokens: 2000
             },
-            {
-                headers: {
-                    Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 60000
-            }
+            { headers: ai.headers, timeout: ai.timeout }
         );
 
         const aiContent = aiRes.data.choices[0]?.message?.content;

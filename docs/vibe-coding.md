@@ -68,8 +68,9 @@ archive/
 | 数据库 | MySQL `study_center`，普通题和试卷题已 AES-256-GCM 加密 |
 | 题目规模 | 普通题 133,444 道，试卷题 834 道 |
 | 搜索 | `question_search_tokens` 盲索引，约 16,995,888 token |
-| 自动化 | 后端 44、Web 3、Android JUnit 16、正式接口 40 项及导出/页面检查通过 |
+| 自动化 | 本地后端 48、Web 3 通过；正式接口回归覆盖导出、第三方配置与 Web 页面 |
 | 题库导出 | 管理员按账户生成 30 天随机密码；登录 + 密码 + 服务端会员/专业范围三重校验，CSV 带审计 |
+| 第三方服务 | 管理后台可配置极验与 OpenAI 兼容 AI 接口，支持三种模型角色和任意兼容服务地址 |
 | APK | 调试包 `artifacts/android/app-debug-1.1.2-20261022.apk`；签名快照 `app-release-1.1.2-20261022-2028.apk` |
 
 当前没有连接 Android 设备，未完成真机、TalkBack、不同 ROM 和签名正式发布验收。不要把调试包描述成正式线上版本。
@@ -195,6 +196,14 @@ Set-Location apps/android
 - apps/server/routes/admin_new/export_credentials.js：管理员生成、查看和撤销。
 - apps/web/src/views/ExportView.vue、apps/web/src/views/admin/ExportAuthorization.vue：导出与授权界面。
 - apps/server/tests/question-export-routes.test.js：路由级授权、过期、审计和演示角色测试。
+
+## 第三方服务文件
+
+- apps/server/services/integrationSettings.js：配置读取、缓存、掩码、地址校验。
+- apps/server/routes/admin_new/integrations.js：管理员读写与 AI 连接测试。
+- apps/server/services/geetestService.js：登录校验改为数据库配置优先、环境变量兜底。
+- apps/web/src/utils/geetest.js：动态读取 Captcha ID，支持后台关闭验证。
+- apps/web/src/views/admin/IntegrationsView.vue：极验与 AI 模型配置界面。
 
 ## 当前待办
 

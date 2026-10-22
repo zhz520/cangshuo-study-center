@@ -5,8 +5,9 @@ require(root+'/node_modules/dotenv').config({path:process.argv.includes('--live'
 const mysql=require(root+'/node_modules/mysql2/promise'),jwt=require(root+'/node_modules/jsonwebtoken');
 const live=process.argv.includes('--live'),base=live?'https://studyapi.zhzgo.cn':'http://127.0.0.1:9899';
 const results=[];
+const testIp='198.51.100.'+(1+Math.floor(Math.random()*254));
 async function check(name,url,{id,method='GET',body,expected=200}={}) {
- const headers={'Content-Type':'application/json'};
+ const headers={'Content-Type':'application/json','X-Forwarded-For':testIp};
  if(id)headers.Authorization='Bearer '+jwt.sign({id,role:'admin',subscription_end_date:'2099-01-01'},process.env.JWT_SECRET,{expiresIn:'3m'});
  if(!live)headers['X-Forwarded-Proto']='https';
  const start=Date.now();const response=await fetch(base+url,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(20000)});
@@ -70,11 +71,16 @@ async function check(name,url,{id,method='GET',body,expected=200}={}) {
   await check('admin exams','/api/admin/exams',{id:admin.id});
   await check('admin settings','/api/admin/settings',{id:admin.id});
   await check('admin export credentials','/api/admin/exports?limit=2',{id:admin.id});
+ const integrations=await check('admin integrations','/api/admin/integrations',{id:admin.id});
+ if('ai_api_key'in integrations.data||'geetest_web_key'in integrations.data)throw new Error('Integration secrets leaked');
  }
  const demo=users.find(u=>u.role==='demo');
  if(demo){
   await check('demo cannot read export credentials','/api/admin/exports',{id:demo.id,expected:403});
+  await check('demo cannot read integrations','/api/admin/integrations',{id:demo.id,expected:403});
  }
+ const authConfig=await check('public auth config','/api/public/auth-config');
+ if(JSON.stringify(authConfig.data).match(/secret|api_key|web_key/i))throw new Error('Public auth config leaks secrets');
  await check('anonymous export','/api/data/export/questions',{method:'POST',body:{subject_id:subject.id,password:'AAAA-BBBB-CCCC-DDDD'},expected:401});
  if(paid){
   await check('export rejects wrong password','/api/data/export/questions',{id:paid.id,method:'POST',body:{subject_id:subject.id,password:'AAAA-BBBB-CCCC-DDDD'},expected:403});
@@ -91,6 +97,6 @@ async function check(name,url,{id,method='GET',body,expected=200}={}) {
   if(!ok)throw new Error('Web page '+page+' failed');
  }
  console.log(JSON.stringify({ok:true,checks:results}));
- fs.writeFileSync('/www/backup/codex/study-center-20261022/'+(live?'live-api-smoke.json':'shadow-api-smoke.json'),JSON.stringify({time:new Date().toISOString(),checks:results},null,2),{mode:0o600});
+ fs.writeFileSync(process.env.STUDY_SMOKE_REPORT || '/www/backup/codex/study-center-20261022/'+(live?'live-api-smoke.json':'shadow-api-smoke.json'),JSON.stringify({time:new Date().toISOString(),checks:results},null,2),{mode:0o600});
  }finally{await db.end();}
 })().catch(error=>{console.log(JSON.stringify({ok:false,error:error.message,checks:results}));process.exitCode=1});

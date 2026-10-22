@@ -2,7 +2,7 @@ const express = require('express');
 const pool = require('../config/db');
 const { verifyToken } = require('../middleware/authMiddleware');
 const { rateLimit, chargeExport, sendError } = require('../services/securityLimits');
-const { questionFilter } = require('../services/questionAccess');
+const { questionFilter, questionHeaders } = require('../services/questionAccess');
 const { verifyExportPassword, questionsCsv, MAX_EXPORT } = require('../services/questionExport');
 
 const router = express.Router();
@@ -17,7 +17,7 @@ router.post('/export/questions', verifyToken, rateLimit('question-export-user', 
     const filter = questionFilter(req);
     const where = `${filter.sql} AND q.subject_id = ?`;
     const params = [...filter.params, subjectId];
-    const [[count]] = await pool.query(`SELECT COUNT(*) AS total FROM questions q ${where}`, params);
+    const [[count]] = await pool.query(`SELECT COUNT(*) AS total FROM questions q WHERE ${where}`, params);
     if (Number(count.total) > MAX_EXPORT) return res.status(413).json({ error: `单次最多导出 ${MAX_EXPORT} 题，请按科目分别导出` });
     await chargeExport(req, Number(count.total));
     const [rows] = await pool.query(`SELECT q.id, q.type, q.difficulty, q.tags, q.content, q.options, q.answer, q.analysis,
@@ -29,7 +29,7 @@ router.post('/export/questions', verifyToken, rateLimit('question-export-user', 
     await pool.query('UPDATE question_export_credentials SET last_used_at = NOW() WHERE user_id = ?', [req.userId]);
 
     const filename = `shuxue-subject-${subjectId}-${new Date().toISOString().slice(0, 10)}.csv`;
-    res.set('Cache-Control', 'private, no-store');
+    questionHeaders(req, res);
     res.set('Content-Type', 'text/csv; charset=utf-8');
     res.set('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
     res.send(questionsCsv(rows));

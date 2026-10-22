@@ -267,6 +267,9 @@ export const admin = {
     getExportCredentials: (params) => api.get('/admin/exports', { params }),
     generateExportPassword: (userId) => api.post(`/admin/exports/${userId}`),
     revokeExportPassword: (userId) => api.delete(`/admin/exports/${userId}`),
+    getIntegrationSettings: () => api.get('/admin/integrations'),
+    saveIntegrationSettings: (payload) => api.post('/admin/integrations', payload),
+    testAiIntegration: () => api.post('/admin/integrations/test-ai'),
 };
 
 export const publicApi = {

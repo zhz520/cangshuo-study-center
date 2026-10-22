@@ -22,7 +22,7 @@ app.use(cors({
     origin: ['https://study.zhzgo.cn', 'http://localhost:5174', 'http://localhost:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['X-Question-Access', 'X-Question-Page-Limit', 'X-Question-Preview-Limit', 'X-Question-Has-More', 'Retry-After']
+    exposedHeaders: ['X-Question-Access', 'X-Question-Page-Limit', 'X-Question-Preview-Limit', 'X-Question-Has-More', 'Retry-After', 'Content-Disposition']
 }));
 
 // Simple request logger

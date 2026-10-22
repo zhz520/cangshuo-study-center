@@ -28,6 +28,7 @@ const navGroups = [
     { label: '课程表', to: '/admin/schedule' },
     { label: 'App 版本', to: '/admin/app-update' },
     { label: '系统设置', to: '/admin/settings' },
+    { label: '第三方服务', to: '/admin/integrations' },
   ] },
 ];
 const displayName = computed(() => user.value.nickname || user.value.username || '管理员');
