@@ -30,11 +30,11 @@ fun DevJsonRegexScreen(onBack: () -> Unit) {
     
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("开发者助手", fontWeight = FontWeight.Bold) },
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
+                title = { Text("开发者助手") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)

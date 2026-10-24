@@ -1,6 +1,7 @@
 import axios from 'axios';
 import NProgress from 'nprogress';
 import { showSessionExpiredDialog } from '../utils/sessionExpired';
+import { prepareQuestionRequest, openQuestionResponse } from '../utils/question-transport';
 
 // Configure NProgress
 NProgress.configure({ showSpinner: false });
@@ -13,12 +14,16 @@ const api = axios.create({
 });
 
 // ── Request Interceptor ──
-api.interceptors.request.use(config => {
+api.interceptors.request.use(async config => {
     NProgress.start();
     const token = localStorage.getItem('token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+    try {
+        config._study = await prepareQuestionRequest(config.method, api.getUri(config), config.headers.Authorization || '');
+        if (config._study) Object.assign(config.headers, config._study.headers);
+    } catch (error) { NProgress.done(); throw error; }
     return config;
 });
 
@@ -39,8 +44,12 @@ function processQueue(error, token = null) {
 
 // ── Response Interceptor ──
 api.interceptors.response.use(
-    response => {
+    async response => {
         NProgress.done();
+        if (response.config._study) {
+            try { response.data = await openQuestionResponse(response.data, response.config._study); }
+            finally { delete response.config._study; }
+        }
         if (typeof response.data === 'string' && response.data.trim().toLowerCase().startsWith('<!doctype html>')) {
             console.error('API Error: Received HTML instead of JSON.');
             return Promise.reject(new Error(`API 接口异常: 返回了网页 HTML。请检查接口地址 (${baseURL}) 是否正确。`));
@@ -134,6 +143,8 @@ export const data = {
     getMajors: () => api.get('/data/majors'),
     getSubjects: (major_id) => api.get('/data/subjects', { params: { major_id } }),
     getQuestions: (subject_id, params) => api.get('/data/questions', { params: { subject_id, ...params } }),
+    getQuestion: (id) => api.get(`/data/questions/${id}`),
+    getQuestionReview: (id, answer_token) => api.get(`/data/questions/${id}/review`, { params: { answer_token } }),
     
     // Progress
     getProgress: () => api.get('/data/progress'),

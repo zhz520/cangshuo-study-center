@@ -105,7 +105,7 @@ fun ContributionScreen(
     Scaffold(
         containerColor = surfaceColor,
         topBar = {
-            TopAppBar(
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
                 title = { Text("用户投稿", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -172,24 +172,9 @@ fun ContributionScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = Color.Transparent,
-                contentColor = onSurfaceColor,
-                divider = {},
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                        color = onSurfaceColor
-                    )
-                }
-            ) {
-                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                    Text("编辑内容", modifier = Modifier.padding(12.dp), fontWeight = FontWeight.Bold)
-                }
-                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                    Text("实时预览", modifier = Modifier.padding(12.dp), fontWeight = FontWeight.Bold)
-                }
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                cn.zhzgo.study.ui.components.ReferencePill("编辑内容",selectedTab==0){selectedTab=0}
+                cn.zhzgo.study.ui.components.ReferencePill("实时预览",selectedTab==1){selectedTab=1}
             }
 
             Spacer(modifier = Modifier.height(16.dp))

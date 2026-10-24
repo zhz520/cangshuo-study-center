@@ -409,10 +409,10 @@ fun RenderText(
 }
 
 @Composable
-fun QuestionContent(question: Question, onImageClick: ((String) -> Unit)? = null) {
+fun QuestionContent(question: Question, onImageClick: ((String) -> Unit)? = null, fontSize: TextUnit = 18.sp) {
     RenderText(
         text = question.content,
-        fontSize = 18.sp,
+        fontSize = fontSize,
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.padding(bottom = 24.dp),
         onImageClick = onImageClick
@@ -469,11 +469,25 @@ fun FillBlankQuestion(answerText:String,onAnswerChange:(String)->Unit,showAnswer
 }
 @Composable
 fun AnswerSheetDrawer(questions:List<Question>,currentIndex:Int,answers:Map<Int,Any>,onQuestionClick:(Int)->Unit,
-    isPlus:Boolean=true,freeLimit:Int=20,submitted:Set<Int>?=null,marked:Set<Int> = emptySet(),offset:Int=0,onClose:(()->Unit)?=null) {
+    isPlus:Boolean=true,freeLimit:Int=20,submitted:Set<Int>?=null,marked:Set<Int> = emptySet(),offset:Int=0,onClose:(()->Unit)?=null,
+    hasMore:Boolean=false,loadingMore:Boolean=false,onLoadMore:()->Unit={},onLoadPrevious:()->Unit={},totalCount:Int?=null) {
     val colors=MaterialTheme.colorScheme
     val answered=questions.filter { q -> submitted?.contains(q.id) ?: when(val a=answers[q.id]) {is String->a.isNotBlank();is Collection<*>->a.isNotEmpty();else->false} }.map{it.id}.toSet()
-    val groups=questions.indices.groupBy{questions[it].type}
-    var expanded by remember(groups.keys){mutableStateOf(setOfNotNull(questions.getOrNull(currentIndex)?.type ?: groups.keys.firstOrNull()))}
+    var page by remember { mutableIntStateOf(currentIndex / 50) }
+    var pendingOffset by remember { mutableStateOf<Int?>(null) }
+    val pages = cn.zhzgo.study.data.PracticeWorkflow.sheetPageCount(questions.size)
+    LaunchedEffect(questions.size, offset, loadingMore) {
+        pendingOffset?.let { target ->
+            if(target in offset until offset + questions.size) {
+                page = (target-offset)/50
+                pendingOffset = null
+            } else if(!loadingMore) pendingOffset = null
+        }
+        page = page.coerceIn(0, pages - 1)
+    }
+    val indices = cn.zhzgo.study.data.PracticeWorkflow.sheetIndices(questions.size,page)
+    val groups=indices.groupBy{questions[it].type}
+    var expanded by remember(page, offset, groups.keys){mutableStateOf(groups.keys.toSet())}
     Column(Modifier.fillMaxWidth().padding(horizontal=20.dp)) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Text("答题卡",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f))
@@ -486,6 +500,12 @@ fun AnswerSheetDrawer(questions:List<Question>,currentIndex:Int,answers:Map<Int,
                 }
             }
         }
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
+            TextButton(onClick={if(page>0)page-- else {pendingOffset=maxOf(0,offset-50);onLoadPrevious()}},enabled=!loadingMore&&(page>0||offset>0)) { Text("上一页") }
+            Text(if(questions.isEmpty()) "暂无题目" else "${offset+page*50+1}–${offset+minOf((page+1)*50,questions.size)} / ${totalCount ?: (offset+questions.size)}${if(totalCount==null&&hasMore)"+" else ""}",style=MaterialTheme.typography.bodySmall)
+            TextButton(onClick={if(page<pages-1)page++ else {pendingOffset=offset+questions.size;onLoadMore()}},enabled=!loadingMore&&(page<pages-1||hasMore)) { Text(if(loadingMore)"加载中…" else "下一页") }
+        }
+        if(hasMore) Text("每页 50 题，按需加载后续题目",style=MaterialTheme.typography.labelSmall,color=colors.onSurfaceVariant,modifier=Modifier.padding(bottom=8.dp))
         BoxWithConstraints(Modifier.fillMaxWidth().heightIn(max=430.dp)) {
             val columns=(maxWidth.value/52).toInt().coerceAtLeast(1)
             androidx.compose.foundation.lazy.LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) {

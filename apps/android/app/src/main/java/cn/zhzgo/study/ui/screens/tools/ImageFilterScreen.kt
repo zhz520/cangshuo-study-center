@@ -95,9 +95,9 @@ fun ImageFilterScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("一键滤镜", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
+                title = { Text("一键滤镜") },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } },
                 actions = {
                     if (previewBitmap != null) {
                         TextButton(onClick = {

@@ -30,10 +30,10 @@ fun DocMarkdownScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(if (isPreviewMode) "Markdown 预览" else "Markdown 编辑", fontWeight = FontWeight.Bold) },
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
+                title = { Text(if (isPreviewMode) "Markdown 预览" else "Markdown 编辑") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
                 },
                 actions = {
                     IconButton(onClick = { isPreviewMode = !isPreviewMode }) {

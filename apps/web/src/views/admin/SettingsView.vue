@@ -1,4 +1,5 @@
 <script setup>
+import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
 import { ref, reactive, onMounted } from "vue";
 import { admin } from "../../api";
 import Toast from "../../components/ui/Toast.vue";
@@ -42,6 +43,8 @@ const dailyTypes = [
   { value: "proverb", label: "英语谚语" },
   { value: "poetry", label: "古诗词" },
 ];
+
+const dailyTypeLabel = (type) => dailyTypes.find(item => item.value === type)?.label || type;
 
 const loadDailyContents = async (page = 1) => {
   try {
@@ -131,6 +134,21 @@ const fetchData = async () => {
     console.error("Failed to fetch settings:", error);
   } finally {
     loading.value = false;
+  }
+};
+
+const saveMailSettings = async () => {
+  try {
+    const fields = [
+      ['smtp_host', settings.value.smtp_host || ''],
+      ['smtp_user', settings.value.smtp_user || ''],
+      ['smtp_pass', settings.value.smtp_pass || ''],
+      ['admin_email_for_reports', settings.value.admin_email_for_reports || ''],
+    ];
+    for (const [key, value] of fields) await admin.updateSettings({ key, value });
+    showMessage('邮件设置已保存');
+  } catch (error) {
+    toast.value?.add('邮件设置保存失败', 'error');
   }
 };
 
@@ -230,77 +248,34 @@ onMounted(fetchData);
 </script>
 
 <template>
-  <div class="px-3 py-4 sm:p-6 space-y-5">
-    <div
-      class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-    >
-      <div>
-        <h2
-          class="text-2xl font-black text-slate-800 dark:text-white tracking-tight"
-        >
-          系统与内容
-        </h2>
-        <div class="flex items-center gap-2 mt-1">
-          <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">
-            配置系统参数与首页内容
-          </p>
-          <span class="text-slate-300 dark:text-slate-600">|</span>
-          <router-link
-            to="/admin/users"
-            class="text-xs font-bold text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
-            >返回用户管理</router-link
-          >
-        </div>
-      </div>
+  <div class="admin-workspace ui-page settings-page">
+    <header class="admin-page-bar">
+      <AdminPageHeading title="系统设置" description="管理运行参数、App 内容与运营资源。" />
+    </header>
+
+    <div class="admin-tabs settings-tabs" role="tablist" aria-label="系统与内容分类">
+      <button v-for="tab in [{id:'settings',label:'系统开关'},{id:'countdowns',label:'考试倒计时'},{id:'links',label:'快捷链接'},{id:'daily',label:'每日内容'}]" :key="tab.id" type="button" role="tab" :aria-selected="activeTab === tab.id" class="admin-tab" :class="{ 'is-active': activeTab === tab.id }" @click="changeTab(tab.id)">{{ tab.label }}</button>
     </div>
 
-    <!-- Custom Tabs -->
-    <div
-      class="flex p-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-x-auto no-scrollbar border border-slate-200 dark:border-slate-700/50 gap-1"
-    >
-      <button
-        v-for="tab in [
-          { id: 'settings', label: '系统开关', icon: '⚙️' },
-          { id: 'countdowns', label: '倒计时', icon: '⏳' },
-          { id: 'links', label: '外部链接', icon: '🔗' },
-          { id: 'daily', label: '每日内容', icon: '📅' },
-        ]"
-        :key="tab.id"
-        @click="changeTab(tab.id)"
-        class="flex-1 min-w-[60px] px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg text-[10px] sm:text-xs font-black transition-all whitespace-nowrap flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2"
-        :class="
-          activeTab === tab.id
-            ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/30'
-        "
-      >
-        <span class="text-base sm:text-sm">{{ tab.icon }}</span>
-        <span class="hidden xs:inline sm:inline">{{ tab.label }}</span>
-      </button>
-    </div>
-
+    <div class="settings-content">
     <!-- 1. System Settings -->
-    <div v-if="activeTab === 'settings'" class="animate-fade-in space-y-6">
-      <div class="glass-card p-4 sm:p-6">
+    <div v-if="activeTab === 'settings'" class="animate-fade-in settings-system-grid">
+      <div class="settings-block">
         <h3
-          class="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6"
+          class="settings-block-title"
         >
-          Global Configuration
+          注册入口
         </h3>
 
         <div
-          class="flex flex-wrap items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-indigo-100 dark:hover:border-indigo-500/20 transition-colors gap-3"
+          class="settings-row"
         >
           <div class="flex gap-4 items-center flex-1 min-w-0">
             <div
               class="w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center text-2xl"
-              :class="
-                settings.registration_open === 'true'
-                  ? 'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                  : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
-              "
+              :class="['settings-registration-icon', { 'is-on': settings.registration_open === 'true' }]"
             >
-              📝
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M15 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M19 8v6M16 11h6"/></svg>
             </div>
             <div class="min-w-0">
               <h3 class="font-bold text-slate-800 dark:text-slate-200">
@@ -319,42 +294,25 @@ onMounted(fetchData);
                 settings.registration_open === 'true' ? 'false' : 'true',
               )
             "
-            class="relative w-14 h-7 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-shrink-0"
-            :class="
-              settings.registration_open === 'true'
-                ? 'bg-green-500'
-                : 'bg-slate-200 dark:bg-slate-700'
-            "
-          >
-            <span
-              class="absolute top-1 left-1 bg-white w-5 h-5 rounded-full shadow-sm transition-transform duration-300"
-              :class="
-                settings.registration_open === 'true'
-                  ? 'translate-x-7'
-                  : 'translate-x-0'
-              "
-            ></span>
+            class="admin-switch" :class="{ 'is-on': settings.registration_open === 'true' }" :aria-pressed="settings.registration_open === 'true'">
+            <span></span>
           </button>
         </div>
       </div>
 
       <!-- AI Day Limit -->
-      <div class="glass-card p-4 sm:p-6">
+      <div class="settings-block">
         <h3
-          class="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6"
+          class="settings-block-title"
         >
-          AI Usage Configuration
+          每日配额
         </h3>
 
         <div
-          class="flex flex-wrap items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-indigo-100 dark:hover:border-indigo-500/20 transition-colors gap-3"
+          class="settings-row"
         >
           <div class="flex gap-4 items-center flex-1 min-w-0">
-            <div
-              class="w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center text-2xl bg-purple-100 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400"
-            >
-              🤖
-            </div>
+            <div class="settings-accent-icon">AI</div>
             <div class="min-w-0">
               <h3 class="font-bold text-slate-800 dark:text-slate-200">
                 每日 AI 使用次数限制
@@ -368,73 +326,49 @@ onMounted(fetchData);
 
         <!-- Free user AI limit -->
         <div
-          class="flex flex-wrap items-center justify-between p-4 ml-16 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700 gap-3"
+          class="settings-mini-row"
         >
           <div class="flex gap-3 items-center flex-1 min-w-0">
-            <span class="text-lg">👤</span>
+
             <div class="min-w-0">
-              <h3 class="font-bold text-slate-700 dark:text-slate-300 text-sm">
-                普通用户
-              </h3>
-              <p class="text-[10px] text-slate-400">每天可用次数</p>
+              <h3 class="settings-row-title">普通用户</h3>
+              <p class="settings-row-hint">每天可用次数</p>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <input
-              v-model="settings.ai_day_limit_free"
-              type="number"
-              min="0"
-              class="w-20 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-center font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-            />
-            <button
-              @click="updateSetting('ai_day_limit_free', settings.ai_day_limit_free)"
-              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all active:scale-95"
-            >
-              保存
-            </button>
+          <div class="settings-input-action">
+            <input v-model="settings.ai_day_limit_free" type="number" min="0" class="ui-input" placeholder="未设置" aria-label="普通用户每日 AI 次数" />
+            <button type="button" class="ui-btn ui-btn-primary ui-btn-sm admin-control" @click="updateSetting('ai_day_limit_free', settings.ai_day_limit_free)">保存</button>
           </div>
         </div>
 
         <!-- Plus user AI limit -->
         <div
-          class="flex flex-wrap items-center justify-between p-4 ml-16 bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-800/30 gap-3"
+          class="settings-mini-row is-plus"
         >
           <div class="flex gap-3 items-center flex-1 min-w-0">
-            <span class="text-lg">✨</span>
+            <span class="admin-panel-mark">Plus</span>
             <div class="min-w-0">
-              <h3 class="font-bold text-purple-700 dark:text-purple-300 text-sm">
-                Plus 订阅用户
-              </h3>
-              <p class="text-[10px] text-purple-400">每天可用次数</p>
+              <h3 class="settings-row-title">Plus 会员</h3>
+              <p class="settings-row-hint">每天可用次数</p>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <input
-              v-model="settings.ai_day_limit_plus"
-              type="number"
-              min="0"
-              class="w-20 px-3 py-2 bg-white dark:bg-slate-700 border border-purple-200 dark:border-purple-700 rounded-lg text-center font-bold text-purple-700 dark:text-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-            />
-            <button
-              @click="updateSetting('ai_day_limit_plus', settings.ai_day_limit_plus)"
-              class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all active:scale-95"
-            >
-              保存
-            </button>
+          <div class="settings-input-action">
+            <input v-model="settings.ai_day_limit_plus" type="number" min="0" class="ui-input" placeholder="未设置" aria-label="Plus 会员每日 AI 次数" />
+            <button type="button" class="ui-btn ui-btn-primary ui-btn-sm admin-control" @click="updateSetting('ai_day_limit_plus', settings.ai_day_limit_plus)">保存</button>
           </div>
         </div>
       </div>
 
       <!-- APP Announcement -->
-      <div class="glass-card p-4 sm:p-6">
+      <div class="settings-block settings-span-2">
         <h3
-          class="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6"
+          class="settings-block-title"
         >
-          APP Announcement Configuration
+          公告内容
         </h3>
 
         <div
-          class="flex flex-wrap items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-indigo-100 dark:hover:border-indigo-500/20 transition-colors gap-3 mb-4"
+          class="settings-row"
         >
           <div class="flex gap-4 items-center flex-1 min-w-0">
             <div
@@ -445,7 +379,7 @@ onMounted(fetchData);
                   : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
               "
             >
-              📢
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m3 11 15-6v14L3 13v-2Z"/><path d="M11.6 16.1 13 21H8l-1.1-4"/><path d="M21 9v6"/></svg>
             </div>
             <div class="min-w-0">
               <h3 class="font-bold text-slate-800 dark:text-slate-200">
@@ -464,26 +398,13 @@ onMounted(fetchData);
                 settings.app_announcement_enabled === 'true' ? 'false' : 'true',
               )
             "
-            class="relative w-14 h-7 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-shrink-0"
-            :class="
-              settings.app_announcement_enabled === 'true'
-                ? 'bg-green-500'
-                : 'bg-slate-200 dark:bg-slate-700'
-            "
-          >
-            <span
-              class="absolute top-1 left-1 bg-white w-5 h-5 rounded-full shadow-sm transition-transform duration-300"
-              :class="
-                settings.app_announcement_enabled === 'true'
-                  ? 'translate-x-7'
-                  : 'translate-x-0'
-              "
-            ></span>
+            class="admin-switch" :class="{ 'is-on': settings.app_announcement_enabled === 'true' }" :aria-pressed="settings.app_announcement_enabled === 'true'">
+            <span></span>
           </button>
         </div>
 
         <div
-          class="flex flex-col p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700 gap-3"
+          class="flex flex-col p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-700 gap-3"
         >
           <label
             class="block text-xs font-bold text-slate-500 dark:text-slate-400"
@@ -492,7 +413,7 @@ onMounted(fetchData);
           <textarea
             v-model="settings.app_announcement"
             rows="3"
-            class="w-full p-4 rounded-xl border bg-white dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            class="w-full p-4 rounded-xl border bg-white dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ui-textarea"
             placeholder="输入需要展示在 APP 首页的公告内容..."
           ></textarea>
           <div class="flex justify-end mt-2">
@@ -503,7 +424,7 @@ onMounted(fetchData);
                   settings.app_announcement || '',
                 )
               "
-              class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-200/50 dark:shadow-none transition-all active:scale-95"
+              class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold dark:shadow-none transition-all admin-control"
             >
               保存公告内容
             </button>
@@ -511,447 +432,76 @@ onMounted(fetchData);
         </div>
       </div>
 
-      <!-- SMTP Email Configuration -->
-      <div class="glass-card p-4 sm:p-6 mt-6">
+      <!-- 邮件服务 -->
+      <div class="settings-block settings-span-2">
         <h3
-          class="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6"
+          class="settings-block-title"
         >
-          SMTP Email Configuration
+          邮件投递
         </h3>
 
-        <div class="space-y-4">
-          <!-- SMTP Host -->
-          <div
-            class="flex flex-col p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700 gap-3"
-          >
-            <div class="flex justify-between items-center">
-              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400">
-                邮件Host <span class="text-[10px] font-normal ml-2">请根据所选发件平台获取</span>
-              </label>
-              <button
-                @click="updateSetting('smtp_host', settings.smtp_host || '')"
-                class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold transition-all active:scale-95"
-              >
-                保存系统设置
-              </button>
-            </div>
-            <input
-              v-model="settings.smtp_host"
-              type="text"
-              class="w-full px-4 py-2 border bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              placeholder="smtp.qq.com"
-            />
-          </div>
+        <div class="settings-mail-grid">
+          <label class="settings-field"><span>邮件服务器</span><small>例如 smtp.qq.com</small><input v-model="settings.smtp_host" class="ui-input" placeholder="SMTP Host" /></label>
+          <label class="settings-field"><span>发信邮箱</span><small>用于发送系统邮件</small><input v-model="settings.smtp_user" class="ui-input" type="email" placeholder="name@example.com" /></label>
+          <label class="settings-field"><span>发信授权码</span><small>只保存在服务端</small><input v-model="settings.smtp_pass" class="ui-input" type="password" autocomplete="new-password" placeholder="SMTP 授权码" /></label>
+          <label class="settings-field"><span>管理员收件邮箱</span><small>接收题目报错和系统提醒</small><input v-model="settings.admin_email_for_reports" class="ui-input" type="email" placeholder="admin@example.com" /></label>
+        </div>
+        <div class="settings-mail-actions"><button type="button" class="ui-btn ui-btn-primary ui-btn-sm admin-control" @click="saveMailSettings">保存邮件设置</button></div>
+        <div class="settings-callout" style="margin-top:12px"><strong>安全提示</strong><span>授权码不会下发到前端页面。保存后请用一次找回密码流程验证邮件投递。</span></div>
+      </div>
+    </div>
 
-          <!-- 发信邮箱 -->
-          <div
-            class="flex flex-col p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700 gap-3"
-          >
-            <div class="flex justify-between items-center">
-              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400">
-                发信邮箱
-              </label>
-              <button
-                @click="updateSetting('smtp_user', settings.smtp_user || '')"
-                class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold transition-all active:scale-95"
-              >
-                保存系统设置
-              </button>
-            </div>
-            <input
-              v-model="settings.smtp_user"
-              type="text"
-              class="w-full px-4 py-2 border bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              placeholder="2156628804@qq.com"
-            />
-          </div>
+    <div v-if="activeTab === 'countdowns'" class="animate-fade-in settings-content">
+      <div class="settings-panel-toolbar"><div><strong>考试节点</strong><span>共 {{ countdowns.length }} 个日期</span></div><button type="button" class="ui-btn ui-btn-primary ui-btn-sm admin-control" @click="openAddCountdown">新增倒计时</button></div>
+      <div v-if="countdowns.length" class="settings-directory">
+        <div v-for="item in countdowns" :key="item.id" class="settings-countdown-row">
+          <span class="settings-date">{{ item.target_date }}</span>
+          <div class="settings-row-copy"><strong>{{ item.title }}</strong><span>首页与学习页考试倒计时</span></div>
+          <div class="settings-row-actions"><button type="button" class="admin-text-action" @click="openEditCountdown(item)">编辑</button><button type="button" class="admin-text-action danger" @click="deleteItem('countdown', item.id)">删除</button></div>
+        </div>
+      </div>
+      <div v-else class="settings-empty"><strong>暂无考试节点</strong><span>新增后会出现在首页倒计时区域。</span></div>
+    </div>
 
-          <!-- 发信授权码 -->
-          <div
-            class="flex flex-col p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700 gap-3"
-          >
-            <div class="flex justify-between items-center">
-              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400">
-                发信授权码 <span class="text-[10px] font-normal ml-2">请根据所选发件平台获取</span>
-              </label>
-              <button
-                @click="updateSetting('smtp_pass', settings.smtp_pass || '')"
-                class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold transition-all active:scale-95"
-              >
-                保存系统设置
-              </button>
-            </div>
-            <input
-              v-model="settings.smtp_pass"
-              type="password"
-              class="w-full px-4 py-2 border bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              placeholder="********"
-            />
-          </div>
+    <div v-if="activeTab === 'links'" class="animate-fade-in settings-content">
+      <div class="settings-panel-toolbar"><div><strong>外部资源</strong><span>共 {{ links.length }} 个链接</span></div><button type="button" class="ui-btn ui-btn-primary ui-btn-sm admin-control" @click="openAddLink">新增链接</button></div>
+      <div v-if="links.length" class="admin-directory">
+        <div v-for="(item, index) in links" :key="item.id" class="admin-link-row">
+          <span class="admin-link-index">{{ String(index + 1).padStart(2, '0') }}</span>
+          <span class="admin-link-mark">{{ item.name.slice(0, 1) }}</span>
+          <div class="admin-link-copy"><strong>{{ item.name }}</strong><p>{{ item.description || '常用学习资源' }}</p><a :href="item.url" target="_blank" rel="noopener">{{ item.url }}</a></div>
+          <div class="admin-row-actions"><button type="button" class="admin-text-action" @click="openEditLink(item)">编辑</button><button type="button" class="admin-text-action danger" @click="deleteItem('link', item.id)">删除</button></div>
+        </div>
+      </div>
+      <div v-else class="settings-empty"><strong>暂无快捷链接</strong><span>新增后会出现在学习首页的资源区。</span></div>
+    </div>
 
-          <!-- 收信邮箱 (管理员) -->
-          <div
-            class="flex flex-col p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700 gap-3"
-          >
-            <div class="flex justify-between items-center">
-              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400">
-                接收报错提醒邮箱 (管理员邮箱)
-              </label>
-              <button
-                @click="updateSetting('admin_email_for_reports', settings.admin_email_for_reports || '')"
-                class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold transition-all active:scale-95"
-              >
-                保存系统设置
-              </button>
-            </div>
-            <input
-              v-model="settings.admin_email_for_reports"
-              type="text"
-              class="w-full px-4 py-2 border bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              placeholder="2183649927@qq.com"
-            />
-          </div>
+    <div v-if="activeTab === 'daily'" class="animate-fade-in settings-content">
+      <div class="settings-panel-toolbar daily-toolbar">
+        <div class="settings-filter-bar" role="group" aria-label="每日内容类型">
+          <button v-for="filter in [{id:'all',label:'全部'},{id:'quote',label:'语录'},{id:'proverb',label:'谚语'},{id:'poetry',label:'诗词'}]" :key="filter.id" type="button" class="settings-filter-chip" :class="{ 'is-active': dailyContentType === filter.id }" @click="dailyContentType = filter.id; loadDailyContents()">{{ filter.label }}</button>
+        </div>
+        <button type="button" class="ui-btn ui-btn-primary ui-btn-sm admin-control" @click="openAddDaily">新增内容</button>
+      </div>
+      <div v-if="dailyContents.length" class="settings-daily-list">
+        <article v-for="item in dailyContents" :key="item.id" class="settings-daily-row">
+          <div class="settings-daily-meta"><span class="settings-type-tag">{{ dailyTypeLabel(item.type) }}</span><span>#{{ item.id }}</span></div>
+          <div class="settings-daily-copy"><p>“{{ item.content }}”</p><span v-if="item.translation">{{ item.translation }}</span></div>
+          <div class="settings-row-actions"><button type="button" class="admin-text-action" @click="openEditDaily(item)">编辑</button><button type="button" class="admin-text-action danger" @click="deleteDaily(item.id)">删除</button></div>
+        </article>
+      </div>
+      <div v-else class="settings-empty"><strong>暂无内容</strong><span>新增语录、谚语或诗词后会显示在这里。</span></div>
+      <div v-if="dailyPagination.totalPages > 1" class="settings-pager">
+        <span>共 {{ dailyPagination.total }} 条 · 第 {{ dailyPagination.page }} / {{ dailyPagination.totalPages }} 页</span>
+        <div>
+          <button type="button" class="ui-btn ui-btn-outline ui-btn-sm admin-control" :disabled="dailyPagination.page === 1" @click="handleDailyPageChange(dailyPagination.page - 1)">上一页</button>
+          <input v-model="jumpPageNum" type="number" min="1" :max="dailyPagination.totalPages" class="ui-input" @keyup.enter="handleDailyJump" />
+          <button type="button" class="ui-btn ui-btn-outline ui-btn-sm admin-control" @click="handleDailyJump">跳转</button>
+          <button type="button" class="ui-btn ui-btn-outline ui-btn-sm admin-control" :disabled="dailyPagination.page === dailyPagination.totalPages" @click="handleDailyPageChange(dailyPagination.page + 1)">下一页</button>
         </div>
       </div>
     </div>
 
-    <!-- 2. Countdowns -->
-    <div v-if="activeTab === 'countdowns'" class="animate-fade-in space-y-6">
-      <div
-        class="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700"
-      >
-        <h3 class="font-bold text-slate-700 dark:text-slate-200 ml-2">
-          倒计时列表
-        </h3>
-        <button
-          @click="openAddCountdown"
-          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-lg shadow-indigo-200/50 dark:shadow-none"
-        >
-          + 新增倒计时
-        </button>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
-          v-for="item in countdowns"
-          :key="item.id"
-          class="glass-card p-5 group flex justify-between items-start hover:-translate-y-1 transition-transform"
-        >
-          <div class="flex gap-4">
-            <div class="text-3xl">{{ item.icon }}</div>
-            <div>
-              <div class="font-black text-slate-800 dark:text-slate-100">
-                {{ item.title }}
-              </div>
-              <div
-                class="text-xs font-mono font-bold text-indigo-500 dark:text-indigo-400 mt-1 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-lg inline-block"
-              >
-                {{ item.target_date }}
-              </div>
-            </div>
-          </div>
-          <div
-            class="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <button
-              @click="openEditCountdown(item)"
-              class="text-slate-400 hover:text-indigo-500 transition-colors"
-              title="编辑"
-            >
-              ✏️
-            </button>
-            <button
-              @click="deleteItem('countdown', item.id)"
-              class="text-slate-400 hover:text-rose-500 transition-colors"
-              title="删除"
-            >
-              🗑️
-            </button>
-          </div>
-        </div>
-        <div
-          v-if="countdowns.length === 0"
-          class="col-span-full py-12 text-center text-slate-400 font-bold border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl"
-        >
-          暂无倒计时配置
-        </div>
-      </div>
-    </div>
-
-    <!-- 3. Links -->
-    <div v-if="activeTab === 'links'" class="animate-fade-in space-y-6">
-      <div
-        class="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700"
-      >
-        <h3 class="font-bold text-slate-700 dark:text-slate-200 ml-2">
-          快捷链接列表
-        </h3>
-        <button
-          @click="openAddLink"
-          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-lg shadow-indigo-200/50 dark:shadow-none"
-        >
-          + 新增链接
-        </button>
-      </div>
-
-      <div
-        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-      >
-        <div
-          v-for="item in links"
-          :key="item.id"
-          class="glass-card p-5 group relative overflow-hidden hover:shadow-lg transition-all"
-        >
-          <div
-            class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-          >
-            <button
-              @click="openEditLink(item)"
-              class="p-1.5 bg-white/80 dark:bg-slate-700/80 rounded-lg text-indigo-500 hover:text-indigo-600 transition-colors"
-            >
-              ✏️
-            </button>
-            <button
-              @click="deleteItem('link', item.id)"
-              class="p-1.5 bg-white/80 dark:bg-slate-700/80 rounded-lg text-rose-500 hover:text-rose-600 transition-colors"
-            >
-              🗑️
-            </button>
-          </div>
-
-          <div class="flex flex-col items-center text-center">
-            <div
-              :class="[
-                item.color,
-                'w-14 h-14 rounded-2xl flex items-center justify-center text-3xl text-white shadow-lg mb-4 transform group-hover:scale-110 transition-transform duration-300',
-              ]"
-            >
-              {{ item.icon }}
-            </div>
-            <h3 class="font-black text-slate-800 dark:text-slate-100 mb-1">
-              {{ item.name }}
-            </h3>
-            <p class="text-xs text-slate-400 mb-3 line-clamp-2 h-8">
-              {{ item.description }}
-            </p>
-            <a
-              :href="item.url"
-              target="_blank"
-              class="text-[10px] font-mono text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded max-w-full truncate hover:underline"
-            >
-              {{ item.url }}
-            </a>
-          </div>
-        </div>
-        <div
-          v-if="links.length === 0"
-          class="col-span-full py-12 text-center text-slate-400 font-bold border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl"
-        >
-          暂无外部链接配置
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. Daily Content -->
-    <div v-if="activeTab === 'daily'" class="animate-fade-in space-y-6">
-      <div
-        class="bg-white dark:bg-slate-800 p-5 rounded-[28px] shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4"
-      >
-        <div class="flex items-center gap-4 w-full sm:w-auto">
-          <span
-            class="text-sm font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap"
-            >筛选类型:</span
-          >
-          <div class="flex p-1 bg-slate-100 dark:bg-slate-700 rounded-lg">
-            <button
-              @click="
-                dailyContentType = 'all';
-                loadDailyContents();
-              "
-              class="px-3 py-1 rounded-md text-xs font-bold transition-colors"
-              :class="
-                dailyContentType === 'all'
-                  ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-300 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400'
-              "
-            >
-              全部
-            </button>
-            <button
-              @click="
-                dailyContentType = 'quote';
-                loadDailyContents();
-              "
-              class="px-3 py-1 rounded-md text-xs font-bold transition-colors"
-              :class="
-                dailyContentType === 'quote'
-                  ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400'
-              "
-            >
-              语录
-            </button>
-            <button
-              @click="
-                dailyContentType = 'proverb';
-                loadDailyContents();
-              "
-              class="px-3 py-1 rounded-md text-xs font-bold transition-colors"
-              :class="
-                dailyContentType === 'proverb'
-                  ? 'bg-white dark:bg-slate-600 text-purple-600 dark:text-purple-300 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400'
-              "
-            >
-              谚语
-            </button>
-            <button
-              @click="
-                dailyContentType = 'poetry';
-                loadDailyContents();
-              "
-              class="px-3 py-1 rounded-md text-xs font-bold transition-colors"
-              :class="
-                dailyContentType === 'poetry'
-                  ? 'bg-white dark:bg-slate-600 text-green-600 dark:text-green-300 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400'
-              "
-            >
-              诗词
-            </button>
-          </div>
-        </div>
-        <button
-          @click="openAddDaily"
-          class="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-200/50 dark:shadow-none transition-all active:scale-95"
-        >
-          + 新增内容
-        </button>
-      </div>
-
-      <div class="space-y-4">
-        <div
-          v-for="item in dailyContents"
-          :key="item.id"
-          class="glass-card p-6 border-l-4 hover:bg-white/80 dark:hover:bg-slate-800/80 transition-all flex flex-col md:flex-row gap-4 justify-between group"
-          :class="{
-            'border-l-blue-500': item.type === 'quote',
-            'border-l-purple-500': item.type === 'proverb',
-            'border-l-green-500': item.type === 'poetry',
-          }"
-        >
-          <div class="flex-1">
-            <div class="flex items-center gap-2 mb-2">
-              <span
-                class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider"
-                :class="{
-                  'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300':
-                    item.type === 'quote',
-                  'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300':
-                    item.type === 'proverb',
-                  'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300':
-                    item.type === 'poetry',
-                }"
-              >
-                {{
-                  item.type === "quote"
-                    ? "Motivation"
-                    : item.type === "proverb"
-                      ? "Proverb"
-                      : "Poetry"
-                }}
-              </span>
-              <span
-                class="text-[10px] text-slate-300 dark:text-slate-600 font-mono"
-                >#{{ item.id }}</span
-              >
-            </div>
-            <p
-              class="text-slate-800 dark:text-slate-100 font-serif font-medium text-lg mb-2 leading-relaxed"
-            >
-              “{{ item.content }}”
-            </p>
-            <p
-              v-if="item.translation"
-              class="text-sm text-slate-500 dark:text-slate-400 italic"
-            >
-              {{ item.type !== "quote" ? "" : "— " }} {{ item.translation }}
-            </p>
-          </div>
-
-          <div
-            class="flex md:flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity self-start md:self-center"
-          >
-            <button
-              @click="openEditDaily(item)"
-              class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 dark:bg-slate-700 dark:hover:bg-indigo-900/30 dark:text-slate-300 dark:hover:text-indigo-400 rounded-lg text-xs font-bold transition-colors"
-            >
-              编辑
-            </button>
-            <button
-              @click="deleteDaily(item.id)"
-              class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 dark:bg-slate-700 dark:hover:bg-rose-900/30 dark:text-slate-300 dark:hover:text-rose-400 rounded-lg text-xs font-bold transition-colors"
-            >
-              删除
-            </button>
-          </div>
-        </div>
-
-        <div
-          v-if="dailyContents.length === 0"
-          class="text-center py-20 bg-slate-50/50 dark:bg-slate-800/30 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[32px] text-slate-400"
-        >
-          <div class="text-3xl mb-2">🍃</div>
-          暂无内容数据
-        </div>
-      </div>
-
-      <!-- Pagination -->
-      <div
-        v-if="dailyPagination.totalPages > 1"
-        class="flex flex-col sm:flex-row justify-between items-center pt-6 border-t border-slate-200 dark:border-slate-700 gap-4"
-      >
-        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Total {{ dailyPagination.total }} items • Page
-          {{ dailyPagination.page }} of {{ dailyPagination.totalPages }}
-        </div>
-        <div class="flex items-center gap-3">
-          <button
-            @click="handleDailyPageChange(dailyPagination.page - 1)"
-            :disabled="dailyPagination.page === 1"
-            class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            ←
-          </button>
-
-          <div
-            class="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-1"
-          >
-            <input
-              v-model="jumpPageNum"
-              @keyup.enter="handleDailyJump"
-              type="number"
-              min="1"
-              :max="dailyPagination.totalPages"
-              class="w-10 text-center text-xs font-bold bg-transparent outline-none text-slate-700 dark:text-slate-200"
-            />
-            <button
-              @click="handleDailyJump"
-              class="px-2 py-1 text-[10px] bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300 rounded font-black hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors uppercase"
-            >
-              GO
-            </button>
-          </div>
-
-          <button
-            @click="handleDailyPageChange(dailyPagination.page + 1)"
-            :disabled="dailyPagination.page === dailyPagination.totalPages"
-            class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            →
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- MODALS -->
@@ -959,12 +509,12 @@ onMounted(fetchData);
     <!-- Daily Content Modal -->
     <div
       v-if="showDailyModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 transition-all animate-fade-in"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 transition-all animate-fade-in"
     >
       <div
-        class="glass-card w-full max-w-lg p-8 shadow-2xl animate-scale-up border border-white/50 dark:border-slate-600/50"
+        class="ui-card w-full max-w-lg p-5 animate-scale-up border border-white/50 dark:border-slate-600/50"
       >
-        <h3 class="text-xl font-black text-slate-800 dark:text-white mb-6">
+        <h3 class="text-xl text-slate-800 dark:text-white mb-6">
           {{ editingDaily.id ? "编辑内容" : "新增内容" }}
         </h3>
         <div class="space-y-5">
@@ -1023,7 +573,7 @@ onMounted(fetchData);
             <textarea
               v-model="editingDaily.content"
               rows="4"
-              class="w-full p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              class="w-full p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ui-textarea"
               placeholder="输入精彩内容..."
             ></textarea>
           </div>
@@ -1042,20 +592,20 @@ onMounted(fetchData);
             <input
               v-model="editingDaily.translation"
               type="text"
-              class="w-full px-4 py-3 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              class="w-full px-4 py-3 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ui-input"
             />
           </div>
         </div>
         <div class="flex gap-3 mt-8">
           <button
             @click="showDailyModal = false"
-            class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-black transition-colors"
+            class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs transition-colors admin-control"
           >
             取消
           </button>
           <button
             @click="saveDaily"
-            class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-200/50 dark:shadow-none transition-all active:scale-95"
+            class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs dark:shadow-none transition-all admin-control"
           >
             保存更改
           </button>
@@ -1066,12 +616,12 @@ onMounted(fetchData);
     <!-- Countdown Modal -->
     <div
       v-if="showCountdownModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 transition-all animate-fade-in"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 transition-all animate-fade-in"
     >
       <div
-        class="glass-card w-full max-w-sm p-6 shadow-2xl animate-scale-up border border-white/50 dark:border-slate-600/50 max-h-[90vh] overflow-y-auto custom-scrollbar"
+        class="ui-card w-full max-w-sm p-6 animate-scale-up border border-white/50 dark:border-slate-600/50 max-h-[90vh] overflow-y-auto custom-scrollbar"
       >
-        <h3 class="text-xl font-black text-slate-800 dark:text-white mb-6">
+        <h3 class="text-xl text-slate-800 dark:text-white mb-6">
           配置倒计时
         </h3>
         <div class="space-y-4">
@@ -1083,7 +633,7 @@ onMounted(fetchData);
             <input
               v-model="editingCountdown.title"
               type="text"
-              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ui-input"
             />
           </div>
           <div>
@@ -1095,7 +645,7 @@ onMounted(fetchData);
               v-model="editingCountdown.target_date"
               type="text"
               placeholder="MM-DD 或 YYYY-MM-DD"
-              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ui-input"
             />
           </div>
           <div>
@@ -1113,20 +663,20 @@ onMounted(fetchData);
             <input
               v-model.number="editingCountdown.sort_order"
               type="number"
-              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ui-input"
             />
           </div>
         </div>
         <div class="flex gap-3 mt-6">
           <button
             @click="showCountdownModal = false"
-            class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-black transition-colors"
+            class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs transition-colors admin-control"
           >
             取消
           </button>
           <button
             @click="saveCountdown"
-            class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-200/50 dark:shadow-none transition-all active:scale-95"
+            class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs dark:shadow-none transition-all admin-control"
           >
             保存
           </button>
@@ -1137,12 +687,12 @@ onMounted(fetchData);
     <!-- Link Modal -->
     <div
       v-if="showLinkModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 transition-all animate-fade-in"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 transition-all animate-fade-in"
     >
       <div
-        class="glass-card w-full max-w-md p-6 shadow-2xl animate-scale-up border border-white/50 dark:border-slate-600/50 max-h-[90vh] overflow-y-auto custom-scrollbar"
+        class="ui-card w-full max-w-md p-6 animate-scale-up border border-white/50 dark:border-slate-600/50 max-h-[90vh] overflow-y-auto custom-scrollbar"
       >
-        <h3 class="text-xl font-black text-slate-800 dark:text-white mb-6">
+        <h3 class="text-xl text-slate-800 dark:text-white mb-6">
           {{ editingLink.id ? "编辑链接" : "新增链接" }}
         </h3>
         <div class="space-y-4">
@@ -1154,7 +704,7 @@ onMounted(fetchData);
             <input
               v-model="editingLink.name"
               type="text"
-              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ui-input"
             />
           </div>
           <div>
@@ -1165,7 +715,7 @@ onMounted(fetchData);
             <input
               v-model="editingLink.url"
               type="text"
-              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-mono"
+              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-mono ui-input"
             />
           </div>
           <div>
@@ -1176,7 +726,7 @@ onMounted(fetchData);
             <input
               v-model="editingLink.description"
               type="text"
-              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ui-input"
             />
           </div>
           <div class="grid grid-cols-2 gap-4">
@@ -1196,7 +746,7 @@ onMounted(fetchData);
                 v-model="editingLink.color"
                 type="text"
                 placeholder="bg-slate-500"
-                class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ui-input"
               />
             </div>
           </div>
@@ -1208,20 +758,20 @@ onMounted(fetchData);
             <input
               v-model.number="editingLink.sort_order"
               type="number"
-              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ui-input"
             />
           </div>
         </div>
         <div class="flex gap-3 mt-6">
           <button
             @click="showLinkModal = false"
-            class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-black transition-colors"
+            class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs transition-colors admin-control"
           >
             取消
           </button>
           <button
             @click="saveLink"
-            class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-200/50 dark:shadow-none transition-all active:scale-95"
+            class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs dark:shadow-none transition-all admin-control"
           >
             保存
           </button>
@@ -1233,3 +783,88 @@ onMounted(fetchData);
     <ConfirmDialog ref="confirmDialogRef" />
   </div>
 </template>
+
+<style scoped>
+.settings-tabs { margin-bottom:14px; }
+.settings-system-grid { display:grid; grid-template-columns:1fr; gap:0; }
+.settings-span-2 { grid-column:auto; }
+.settings-page-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding-bottom:20px; margin-bottom:4px; border-bottom:1px solid var(--border); }
+.settings-content { display:flex; flex-direction:column; gap:14px; }
+.settings-block { padding:18px 0; border:0; border-bottom:1px solid var(--border); border-radius:0; background:transparent; }
+.settings-block-title { margin:0 0 14px; color:var(--text-main); font-size:13px; font-weight:600; letter-spacing:-.01em; }
+.settings-row { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:12px 0; border-top:1px solid var(--border); }
+.settings-row:first-of-type { border-top:0; }
+.settings-row-copy { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.settings-row-copy strong { color:var(--text-main); font-size:13px; font-weight:550; }
+.settings-row-copy span { color:var(--text-quote); font-size:10px; line-height:1.55; }
+.settings-row-title { margin:0; color:var(--text-main); font-size:13px; font-weight:550; }
+.settings-row-hint { margin:3px 0 0; color:var(--text-quote); font-size:10px; }
+.settings-mini-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 14px; margin-top:10px; border:1px solid var(--border); border-radius:9px; background:var(--bg-card-highlight); }
+.settings-mini-row.is-plus { border-color:color-mix(in srgb,var(--primary) 20%,var(--border)); background:var(--primary-soft); }
+.admin-switch { position:relative; width:44px; height:26px; flex:0 0 44px; border-radius:999px; background:var(--border-strong); transition:background .2s ease; }
+.admin-switch span { position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:var(--bg-card); box-shadow:0 1px 2px rgba(15,23,42,.12); transition:transform .2s ease; }
+.admin-switch.is-on { background:var(--primary); }
+.settings-registration-icon { width:44px; height:44px; flex:0 0 44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:var(--bg-card-highlight); color:var(--text-sub); }
+.settings-registration-icon.is-on { background:var(--primary-soft); color:var(--primary); }
+.admin-switch.is-on span { transform:translateX(18px); }
+.settings-field-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.settings-field-card { display:flex; flex-direction:column; gap:12px; padding:14px; border:1px solid var(--border); border-radius:9px; background:var(--bg-card-highlight); }
+.settings-field-card.is-plus { border-color:color-mix(in srgb,var(--primary) 18%,var(--border)); background:var(--primary-soft); }
+.settings-field-card > div:first-child { display:flex; flex-direction:column; gap:3px; }
+.settings-accent-icon { width:38px; height:38px; flex:0 0 38px; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--primary) 16%,var(--border)); border-radius:8px; background:var(--primary-soft); color:var(--primary); font-size:10px; font-weight:650; letter-spacing:.03em; }
+.settings-field-card strong { color:var(--text-main); font-size:13px; font-weight:550; }
+.settings-field-card span { color:var(--text-quote); font-size:10px; }
+.settings-input-action { display:flex; gap:7px; }
+.settings-input-action .ui-input { width:80px; text-align:center; }
+.settings-callout { display:flex; gap:10px; padding:12px 14px; border:1px solid var(--border); border-radius:9px; background:var(--bg-card-highlight); color:var(--text-sub); font-size:10px; line-height:1.6; }
+.settings-callout strong { flex:0 0 auto; color:var(--text-main); font-weight:550; }
+.settings-panel-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px 18px; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); }
+.settings-panel-toolbar > div:first-child { display:flex; flex-direction:column; gap:3px; }
+.settings-panel-toolbar strong { color:var(--text-main); font-size:13px; font-weight:550; }
+.settings-panel-toolbar span { color:var(--text-quote); font-size:10px; }
+.settings-directory { margin-top:10px; overflow:hidden; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); }
+.settings-countdown-row { display:flex; align-items:center; gap:12px; padding:11px 16px; border-bottom:1px solid var(--border); }
+.settings-countdown-row:last-child { border-bottom:0; }
+.settings-date { flex:0 0 74px; color:var(--text-sub); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:10px; font-weight:600; }
+.settings-row-actions { display:flex; align-items:center; gap:2px; }
+.settings-empty { display:flex; flex-direction:column; align-items:center; gap:5px; margin-top:10px; padding:40px 20px; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); color:var(--text-sub); text-align:center; }
+.settings-empty strong { color:var(--text-main); font-size:13px; font-weight:550; }
+.settings-empty span { color:var(--text-quote); font-size:10px; }
+.daily-toolbar { align-items:center; }
+.settings-filter-bar { display:flex; align-items:center; gap:2px; }
+.settings-panel-toolbar > div.settings-filter-bar { flex-direction:row; gap:2px; }
+.settings-filter-chip { min-height:28px; padding:0 9px; border-radius:6px; color:var(--text-sub); font-size:11px; }
+.settings-filter-chip:hover { background:var(--bg-card-highlight); color:var(--text-main); }
+.settings-filter-chip.is-active { background:var(--primary-soft); color:var(--primary); font-weight:600; }
+.settings-daily-list { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.settings-daily-row { display:flex; align-items:center; gap:16px; padding:14px 16px; border:1px solid var(--border); border-radius:9px; background:var(--bg-card); }
+.settings-daily-meta { display:flex; flex:0 0 76px; flex-direction:column; gap:4px; color:var(--text-quote); font-size:9px; }
+.settings-type-tag { display:inline-flex; width:fit-content; padding:2px 5px; border-radius:3px; background:var(--primary-soft); color:var(--primary); font-size:9px; font-weight:600; }
+.settings-daily-copy { display:flex; flex:1; min-width:0; flex-direction:column; gap:4px; }
+.settings-daily-copy p { color:var(--text-main); font-size:13px; line-height:1.65; }
+.settings-daily-copy span { color:var(--text-sub); font-size:10px; line-height:1.5; }
+.settings-pager { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; color:var(--text-quote); font-size:10px; }
+.settings-pager > div { display:flex; align-items:center; gap:6px; }
+.settings-pager .ui-input { width:52px; min-height:32px; padding:0 6px; text-align:center; }
+.settings-mail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.settings-field { display:flex; flex-direction:column; gap:5px; }
+.settings-field > span { color:var(--text-main); font-size:11px; font-weight:550; }
+.settings-field > small { color:var(--text-quote); font-size:9px; }
+.settings-field .ui-input { margin-top:2px; }
+.settings-mail-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+.settings-editor { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+.settings-editor label { display:block; margin-bottom:6px; color:var(--text-main); font-size:11px; font-weight:550; }
+.settings-editor-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; color:var(--text-quote); font-size:9px; }
+.settings-state { display:inline-flex; align-items:center; min-height:21px; padding:0 7px; border-radius:5px; background:var(--bg-card-highlight); color:var(--text-sub); font-size:9px; white-space:nowrap; }
+.settings-state.is-on { background:color-mix(in srgb,var(--success) 9%,var(--bg-card)); color:var(--success); }
+
+@media(max-width:760px) {
+  .settings-page-head { align-items:flex-start; flex-direction:column; }
+  .settings-field-grid,.settings-mail-grid { grid-template-columns:1fr; }
+  .settings-system-grid { grid-template-columns:1fr; }
+  .settings-span-2 { grid-column:auto; }
+  .settings-daily-row { align-items:flex-start; flex-wrap:wrap; }
+  .settings-daily-meta { flex-basis:100%; flex-direction:row; align-items:center; }
+  .settings-pager { align-items:flex-start; flex-direction:column; }
+}
+</style>

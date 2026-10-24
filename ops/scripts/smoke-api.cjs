@@ -4,14 +4,18 @@ const root='/www/wwwroot/study_center',release='/root/study-security-release/ser
 require(root+'/node_modules/dotenv').config({path:process.argv.includes('--live')?root+'/.env':release+'/.env'});
 const mysql=require(root+'/node_modules/mysql2/promise'),jwt=require(root+'/node_modules/jsonwebtoken');
 const live=process.argv.includes('--live'),base=live?'https://studyapi.zhzgo.cn':'http://127.0.0.1:9899';
+const {prepare,protectedPath}=require('./protected-api-client.cjs');
 const results=[];
 const testIp='198.51.100.'+(1+Math.floor(Math.random()*254));
 async function check(name,url,{id,method='GET',body,expected=200}={}) {
  const headers={'Content-Type':'application/json','X-Forwarded-For':testIp};
  if(id)headers.Authorization='Bearer '+jwt.sign({id,role:'admin',subscription_end_date:'2099-01-01'},process.env.JWT_SECRET,{expiresIn:'3m'});
  if(!live)headers['X-Forwarded-Proto']='https';
+ const transport=id&&protectedPath(url)?prepare(method,url,headers.Authorization):null;
+ if(transport)Object.assign(headers,transport.headers);
  const start=Date.now();const response=await fetch(base+url,{method,headers,body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(20000)});
  let data;try{data=await response.json()}catch{data=null;}
+ if(transport&&response.ok)data=transport.open(data);
  const ok=[].concat(expected).includes(response.status);
  results.push({name,status:response.status,ok,ms:Date.now()-start,count:Array.isArray(data)?data.length:undefined});
  if(!ok)throw new Error(name+' returned '+response.status);
@@ -39,9 +43,10 @@ async function check(name,url,{id,method='GET',body,expected=200}={}) {
   if(!user)continue;
   const [[allowed]]=await db.query(`SELECT q.subject_id id FROM questions q JOIN subjects s ON s.id=q.subject_id WHERE q.is_active=1 AND (?='admin' OR NOT EXISTS(SELECT 1 FROM major_access_control WHERE user_id=?) OR EXISTS(SELECT 1 FROM major_access_control WHERE user_id=? AND major_id=s.major_id)) GROUP BY q.subject_id HAVING COUNT(*)>50 ORDER BY COUNT(*) DESC LIMIT 1`,[user.role,user.id,user.id]);
   if(!allowed)throw new Error('No subject available for '+label);
-  const q=await check(label+' paginated questions','/api/data/questions?subject_id='+allowed.id+'&limit=99999',{id:user.id});
+  const q=await check(label+' paginated questions','/api/data/questions?subject_id='+allowed.id+'&limit='+(label==='paid'?25:99999),{id:user.id});
   if(q.data.length===0)throw new Error('Allowed question page was empty for '+label);
   if(q.data.length>50)throw new Error('Page cap failed');
+  if(q.data.some(q=>q.answer!==null||q.analysis!==null||!q.answer_token))throw new Error('Answer or explanation leaked before submission');
   if(label==='free'&&q.data.length>20)throw new Error('Free preview bypass');
   if(q.data.some(q=>String(q.content).startsWith('zhzgo:gcm:')||typeof q.options!=='object'))throw new Error('Question decode failed');
   if(label==='free'&&q.data.length){
@@ -52,6 +57,14 @@ async function check(name,url,{id,method='GET',body,expected=200}={}) {
   await check(label+' mistakes','/api/data/mistakes?limit=2',{id:user.id});
   await check(label+' progress','/api/data/progress',{id:user.id});
   await check(label+' stats','/api/data/user-stats',{id:user.id});
+  const detail=await check(label+' daily analytics','/api/data/detailed-stats',{id:user.id});
+  if(!detail.data.today||!/^\d{4}-\d{2}-\d{2}$/.test(detail.data.today.day)||detail.data.weekHeatmap.some(d=>!/^\d{4}-\d{2}-\d{2}$/.test(d.day)))throw new Error('Study date format mismatch');
+  const [[daily]]=await db.query('SELECT COUNT(*) total FROM user_progress up JOIN questions q ON q.id=up.question_id WHERE up.user_id=? AND up.is_deleted=FALSE AND q.is_active=1 AND DATE(up.updated_at)=CURDATE()',[user.id]);
+  if(Number(daily.total)!==detail.data.today.total)throw new Error('Daily progress does not match database');
+  if(label==='paid'||label==='admin'){
+    const next=await check(label+' question page two','/api/data/questions?subject_id='+allowed.id+'&limit='+(label==='paid'?25:50)+'&page=2',{id:user.id});
+    if(!next.data.length||next.data.some(item=>q.data.some(prior=>prior.id===item.id)))throw new Error('Question pagination overlaps or cannot continue');
+  }
   await check(label+' exam directory','/api/data/exams',{id:user.id});
   await check(label+' exam history','/api/data/exams/records',{id:user.id});
   if(label==='free')await check('free account cannot open admin', '/api/admin/questions',{id:user.id,expected:403});
@@ -63,6 +76,8 @@ async function check(name,url,{id,method='GET',body,expected=200}={}) {
   if('email'in profile.data.user||'qq_openid'in profile.data.user)throw new Error('Public profile leaks private account fields');
  }
  if(admin){
+  for(const type of ['total','accuracy','score'])await check('leaderboard '+type,'/api/data/leaderboard?type='+type+'&page=1&limit=50',{id:admin.id});
+  await check('leaderboard invalid page','/api/data/leaderboard?page=-1',{id:admin.id,expected:400});
   const adminQuestions=await check('admin question console','/api/admin/questions?limit=2',{id:admin.id});
   const rows=adminQuestions.data?.data;
   if(!Array.isArray(rows)||rows.some(q=>String(q.content).startsWith('zhzgo:gcm:')||typeof q.options!=='object'))throw new Error('Admin question decode failed');

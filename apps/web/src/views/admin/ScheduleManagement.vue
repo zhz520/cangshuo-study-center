@@ -1,4 +1,5 @@
 <script setup>
+import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
 import { ref, computed, onMounted } from 'vue';
 import { admin } from '../../api';
 
@@ -102,26 +103,14 @@ onMounted(fetchSchedule);
 </script>
 
 <template>
-  <div class="max-w-full">
+  <div class="admin-workspace ui-page admin-stack">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-      <div>
-        <h1 class="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">📅 课程表管理</h1>
-        <p class="text-sm text-slate-400 mt-1">编辑班级课程表，修改后点击保存</p>
-      </div>
-      <div class="flex gap-3">
-        <button
-          @click="clearAll"
-          class="px-4 py-2.5 text-xs font-bold text-slate-500 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-all active:scale-95"
-        >
-          🗑️ 清空
-        </button>
-        <button
-          @click="saveSchedule"
-          :disabled="saving"
-          class="px-6 py-2.5 text-xs font-bold text-white bg-indigo-500 rounded-xl hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-indigo-500/25"
-        >
-          {{ saving ? '保存中...' : '💾 保存课程表' }}
+    <div class="admin-page-bar">
+      <AdminPageHeading title="课程表" description="编辑班级课程表，修改后点击保存。" />
+      <div class="admin-page-actions">
+        <button class="ui-btn ui-btn-outline ui-btn-sm admin-control" type="button" @click="clearAll">清空</button>
+        <button class="ui-btn ui-btn-primary ui-btn-sm admin-control" type="button" @click="saveSchedule" :disabled="saving">
+          {{ saving ? '保存中…' : '保存课程表' }}
         </button>
       </div>
     </div>
@@ -131,7 +120,7 @@ onMounted(fetchSchedule);
       <div
         v-if="message"
         :class="messageType === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'"
-        class="mb-6 p-4 rounded-2xl border text-sm font-medium"
+        class="mb-6 p-4 rounded-xl border text-sm font-medium"
       >
         {{ message }}
       </div>
@@ -144,15 +133,15 @@ onMounted(fetchSchedule);
     </div>
 
     <!-- Schedule Grid -->
-    <div v-else class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-x-auto">
-      <table class="w-full min-w-[800px]">
+    <div v-else class="admin-table-card overflow-x-auto">
+      <table class="w-full min-w-[800px] admin-data-table">
         <thead>
           <tr class="bg-slate-50 dark:bg-slate-700/50">
-            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24 border-b border-slate-200 dark:border-slate-600">节次</th>
+            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-24 border-b border-slate-200 dark:border-slate-600">节次</th>
             <th
               v-for="day in DAYS"
               :key="day.key"
-              class="px-3 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-600 border-l"
+              class="px-3 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-600 border-l"
             >
               {{ day.label }}
             </th>
@@ -173,18 +162,18 @@ onMounted(fetchSchedule);
               :key="day.key"
               class="px-1 py-1 border-b border-l border-slate-100 dark:border-slate-700"
             >
-              <div class="space-y-1">
+              <div class="schedule-cell">
                 <input
                   v-model="scheduleGrid[period][day.key].subject"
                   type="text"
                   placeholder="课程"
-                  class="w-full px-2 py-1.5 text-xs rounded-lg bg-transparent border border-transparent hover:border-slate-200 dark:hover:border-slate-600 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/30 outline-none transition-all text-slate-700 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-600 font-medium"
+                  class="admin-schedule-input"
                 />
                 <input
                   v-model="scheduleGrid[period][day.key].location"
                   type="text"
                   placeholder="教室"
-                  class="w-full px-2 py-1 text-[10px] rounded-lg bg-transparent border border-transparent hover:border-slate-200 dark:hover:border-slate-600 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/30 outline-none transition-all text-slate-400 dark:text-slate-500 placeholder-slate-200 dark:placeholder-slate-700"
+                  class="admin-schedule-input is-location"
                 />
               </div>
             </td>
@@ -196,6 +185,12 @@ onMounted(fetchSchedule);
 </template>
 
 <style scoped>
+.schedule-cell { display:flex; flex-direction:column; gap:4px; }
+.admin-schedule-input { width:100%; min-height:30px; padding:0 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg-body); color:var(--text-main); font-size:11px; font-weight:500; outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
+.admin-schedule-input.is-location { min-height:26px; border-color:transparent; background:transparent; color:var(--text-sub); font-size:10px; font-weight:400; }
+.admin-schedule-input:hover { border-color:var(--border-strong); }
+.admin-schedule-input:focus { border-color:var(--primary); box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 14%,transparent); }
+.admin-schedule-input::placeholder { color:var(--text-quote); }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

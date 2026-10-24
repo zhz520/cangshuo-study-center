@@ -44,10 +44,10 @@ fun BmiCalculatorScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("BMI 计算", fontWeight = FontWeight.SemiBold) },
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
+                title = { Text("BMI 计算") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = androidx.compose.ui.graphics.Color.Transparent
@@ -99,7 +99,7 @@ fun BmiCalculatorScreen(onBack: () -> Unit) {
                 onClick = calculateBmi,
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                contentPadding = PaddingValues(vertical = 16.dp)
+                contentPadding = PaddingValues(vertical = 12.dp)
             ) {
                 Text("计算 BMI", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
@@ -109,7 +109,7 @@ fun BmiCalculatorScreen(onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f)),
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
@@ -121,7 +121,7 @@ fun BmiCalculatorScreen(onBack: () -> Unit) {
                         Text("您的 BMI 指数为", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             text = String.format("%.1f", bmi),
-                            style = MaterialTheme.typography.displayLarge,
+                            style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.Bold,
                             color = color
                         )

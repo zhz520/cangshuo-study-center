@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { admin } from '../../api';
 import Toast from '../../components/ui/Toast.vue';
+import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
 
 const toast = ref(null);
 const users = ref([]);
@@ -65,9 +66,9 @@ onMounted(load);
 </script>
 
 <template>
-  <div class="admin-page">
-    <header class="ui-page-head">
-      <div><p class="ui-eyebrow">安全管理</p><h1 class="ui-title">题库导出授权</h1><p class="ui-subtitle">为单个账户生成随机导出密码，旧密码会在重新生成后立即失效。</p></div>
+  <div class="admin-workspace ui-page admin-stack">
+    <header class="export-admin-heading">
+      <AdminPageHeading title="题库导出授权" description="为单个账户生成随机导出密码，旧密码会在重新生成后立即失效。" />
     </header>
 
     <section class="ui-card export-admin-toolbar">
@@ -78,7 +79,7 @@ onMounted(load);
     <section class="ui-card export-admin-table-wrap">
       <div v-if="loading" class="ui-loading"><span class="ui-spinner mx-auto"></span><p class="mt-3">正在读取用户</p></div>
       <div v-else-if="!users.length" class="ui-empty">没有匹配的用户</div>
-      <table v-else class="export-admin-table">
+      <table v-else class="admin-data-table export-admin-table">
         <thead><tr><th>账户</th><th>身份</th><th>导出授权</th><th>到期</th><th>最近使用</th><th class="text-right">操作</th></tr></thead>
         <tbody><tr v-for="row in users" :key="row.id">
           <td><strong>{{ row.nickname || row.username }}</strong><small>{{ row.username }}<span v-if="row.email"> · {{ row.email }}</span></small></td>
@@ -104,10 +105,13 @@ onMounted(load);
 </template>
 
 <style scoped>
+.export-admin-heading { padding-bottom: 18px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
 .export-admin-toolbar { display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 14px; }
 .export-admin-search { display: flex; align-items: center; gap: 8px; flex: 1; }
 .export-admin-search .ui-search-icon { left: 13px; }
 .export-admin-search .ui-input { padding-left: 36px; }
+.export-admin-search .ui-btn { flex: 0 0 auto; min-width: 52px; white-space: nowrap; }
+.export-admin-toolbar .ui-btn, .export-admin-actions .ui-btn, .export-admin-pager .ui-btn { min-height: 36px; }
 .export-admin-table-wrap { overflow-x: auto; }
 .export-admin-table { width: 100%; min-width: 800px; }
 .export-admin-table th, .export-admin-table td { padding: 13px 14px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; font-size: 12px; }
@@ -120,5 +124,5 @@ onMounted(load);
 .export-admin-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--border); color: var(--text-sub); font-size: 11px; }
 .export-admin-pager > div { display: flex; align-items: center; gap: 8px; }
 .export-password-display { margin-top: 18px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-card-highlight); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 20px; letter-spacing: .12em; text-align: center; color: var(--text-main); user-select: all; }
-@media (max-width: 600px) { .export-admin-toolbar { align-items: stretch; flex-direction: column; } .export-admin-search { width: 100%; } }
+@media (max-width: 600px) { .export-admin-toolbar { align-items: stretch; flex-direction: column; } .export-admin-search { width: 100%; } .export-admin-toolbar .ui-btn, .export-admin-actions .ui-btn, .export-admin-pager .ui-btn { min-height: 44px; } }
 </style>

@@ -1,49 +1,60 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import BrandLogo from '../../components/BrandLogo.vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
+import { getTheme, toggleTheme as toggleStoredTheme } from '../../utils/theme';
 
 const router = useRouter();
 const route = useRoute();
 const sidebarOpen = ref(false);
 const confirmDialog = ref(null);
 const user = ref({});
-const isDark = ref(false);
+const isDark = ref(getTheme() === 'dark');
 
 const navGroups = [
-  { label: '概览', items: [{ label: '仪表盘', to: '/admin' }] },
-  { label: '内容', items: [
-    { label: '用户与权限', to: '/admin/users' },
+  { key: 'overview', label: '工作台', items: [
+    { label: '仪表盘', to: '/admin' },
+  ] },
+  { key: 'content', label: '内容与考试', items: [
     { label: '题库管理', to: '/admin/questions' },
-    { label: '题库访问控制', to: '/admin/access-control' },
-    { label: '导出授权', to: '/admin/exports' },
+    { label: '知识结构', to: '/admin/structure' },
     { label: '考试系统', to: '/admin/exams' },
     { label: '题目报错', to: '/admin/reports' },
-    { label: '知识结构', to: '/admin/structure' },
+    { label: '题库访问控制', to: '/admin/access-control' },
+    { label: '导出授权', to: '/admin/exports' },
   ] },
-  { label: '资源与运营', items: [
+  { key: 'operations', label: '用户与运营', items: [
+    { label: '用户与权限', to: '/admin/users' },
     { label: '资源文章', to: '/admin/articles' },
     { label: '评论管理', to: '/admin/comments' },
     { label: '订阅卡密', to: '/admin/cards' },
     { label: '课程表', to: '/admin/schedule' },
+  ] },
+  { key: 'system', label: '平台配置', items: [
     { label: 'App 版本', to: '/admin/app-update' },
     { label: '系统设置', to: '/admin/settings' },
     { label: '第三方服务', to: '/admin/integrations' },
   ] },
 ];
+const groupOpen = reactive({ overview: false, content: false, operations: false, system: false });
+const isActive = (item) => item.to === '/admin' ? route.path === '/admin' : route.path.startsWith(item.to);
+const activeGroup = computed(() => navGroups.find(group => group.items.some(isActive)));
+const activeItem = computed(() => activeGroup.value?.items.find(isActive));
+const toggleGroup = (key) => {
+  const shouldOpen = !groupOpen[key];
+  Object.keys(groupOpen).forEach(item => { groupOpen[item] = false; });
+  if (shouldOpen) groupOpen[key] = true;
+};
+watch(() => route.path, () => {
+  Object.keys(groupOpen).forEach(key => { groupOpen[key] = false; });
+  if (activeGroup.value) groupOpen[activeGroup.value.key] = true;
+}, { immediate: true });
 const displayName = computed(() => user.value.nickname || user.value.username || '管理员');
 const initial = computed(() => displayName.value.slice(0, 1).toUpperCase());
 
-const syncTheme = () => {
-  const saved = localStorage.getItem('theme');
-  isDark.value = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.classList.toggle('dark', isDark.value);
-};
-
 const toggleTheme = () => {
-  isDark.value = !isDark.value;
-  document.documentElement.classList.toggle('dark', isDark.value);
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light');
+  isDark.value = toggleStoredTheme() === 'dark';
 };
 
 const logout = async () => {
@@ -60,7 +71,6 @@ const logout = async () => {
 
 onMounted(() => {
   try { user.value = JSON.parse(localStorage.getItem('user') || '{}') || {}; } catch {}
-  syncTheme();
 });
 </script>
 
@@ -69,15 +79,23 @@ onMounted(() => {
     <div v-if="sidebarOpen" class="admin-backdrop" @click="sidebarOpen = false"></div>
     <aside class="admin-sidebar" :class="{ 'is-open': sidebarOpen }">
       <RouterLink to="/admin" class="admin-brand" @click="sidebarOpen = false">
-        <span class="web-brand-mark">烁</span>
+        <BrandLogo />
         <span><strong>烁学</strong><small>管理后台</small></span>
       </RouterLink>
       <nav class="admin-nav" aria-label="后台导航">
-        <section v-for="group in navGroups" :key="group.label">
-          <p class="admin-nav-label">{{ group.label }}</p>
-          <RouterLink v-for="item in group.items" :key="item.to" :to="item.to" class="admin-nav-link"
-            :class="{ 'is-active': item.to === '/admin' ? route.path === '/admin' : route.path.startsWith(item.to) }"
-            @click="sidebarOpen = false"><span class="admin-nav-line"></span>{{ item.label }}</RouterLink>
+        <p class="admin-nav-caption">管理工作台</p>
+        <section v-for="group in navGroups" :key="group.key" class="admin-nav-group">
+          <button type="button" class="admin-nav-group-trigger" :class="{ 'has-active': activeGroup?.key === group.key }"
+            :aria-expanded="groupOpen[group.key]" @click="toggleGroup(group.key)">
+            <span>{{ group.label }}</span><em>{{ group.items.length }}</em>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" :class="{ 'is-open': groupOpen[group.key] }"><path d="m9 5 7 7-7 7"/></svg>
+          </button>
+          <Transition name="nav-expand">
+            <div v-if="groupOpen[group.key]" class="admin-nav-items">
+              <RouterLink v-for="item in group.items" :key="item.to" :to="item.to" class="admin-nav-link"
+                :class="{ 'is-active': isActive(item) }" @click="sidebarOpen = false"><span class="admin-nav-line"></span>{{ item.label }}</RouterLink>
+            </div>
+          </Transition>
         </section>
       </nav>
       <div class="admin-sidebar-foot">
@@ -90,7 +108,7 @@ onMounted(() => {
     <section class="admin-main">
       <header class="admin-topbar">
         <button class="admin-menu-btn" type="button" aria-label="打开后台导航" @click="sidebarOpen = true"><span></span><span></span><span></span></button>
-        <div class="admin-topbar-title"><strong>管理后台</strong><span>烁学运营与题库管理</span></div>
+        <div class="admin-topbar-title"><strong>{{ activeItem?.label || '管理后台' }}</strong><span>{{ activeGroup?.label || '烁学运营与题库管理' }}</span></div>
         <div class="admin-user"><span class="web-avatar">{{ initial }}</span><span class="admin-user-name">{{ displayName }}</span></div>
       </header>
       <main class="admin-content">
@@ -110,14 +128,23 @@ onMounted(() => {
 .admin-brand > span:last-child { display: flex; flex-direction: column; gap: 1px; }
 .admin-brand strong { font-size: 14px; }
 .admin-brand small { font-size: 10px; color: var(--text-quote); }
-.admin-nav { flex: 1; overflow-y: auto; padding: 18px 10px; }
-.admin-nav section + section { margin-top: 18px; }
-.admin-nav-label { padding: 0 10px 7px; font-size: 10px; font-weight: 600; color: var(--text-quote); letter-spacing: .08em; }
-.admin-nav-link { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 8px; color: var(--text-sub); font-size: 12px; transition: background .15s ease, color .15s ease; }
+.admin-nav { flex: 1; overflow-y: auto; padding: 14px 8px 18px; }
+.admin-nav-caption { padding: 4px 10px 10px; font-size: 9px; font-weight: 650; color: var(--text-quote); letter-spacing: .10em; text-transform: uppercase; }
+.admin-nav-group + .admin-nav-group { margin-top: 3px; }
+.admin-nav-group-trigger { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 7px; padding: 0 9px; border-radius: 7px; color: var(--text-sub); font-size: 11px; font-weight: 550; text-align: left; }
+.admin-nav-group-trigger:hover { background: var(--bg-card-highlight); color: var(--text-main); }
+.admin-nav-group-trigger.has-active { color: var(--text-main); }
+.admin-nav-group-trigger em { margin-left: auto; color: var(--text-quote); font-size: 9px; font-style: normal; font-variant-numeric: tabular-nums; }
+.admin-nav-group-trigger svg { flex: 0 0 13px; color: var(--text-quote); transition: transform .16s ease; }
+.admin-nav-group-trigger svg.is-open { transform: rotate(90deg); }
+.admin-nav-items { margin: 1px 0 6px 17px; padding-left: 7px; border-left: 1px solid var(--border); }
+.admin-nav-link { display: flex; align-items: center; gap: 7px; min-height: 33px; padding: 0 8px; border-radius: 6px; color: var(--text-sub); font-size: 11px; transition: background .15s ease, color .15s ease; }
 .admin-nav-link:hover { background: var(--bg-card-highlight); color: var(--text-main); }
 .admin-nav-link.is-active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
-.admin-nav-line { width: 3px; height: 14px; border-radius: 2px; background: transparent; }
+.admin-nav-line { width: 2px; height: 12px; border-radius: 2px; background: transparent; }
 .admin-nav-link.is-active .admin-nav-line { background: var(--primary); }
+.nav-expand-enter-active, .nav-expand-leave-active { transition: opacity .14s ease, transform .14s ease; }
+.nav-expand-enter-from, .nav-expand-leave-to { opacity: 0; transform: translateY(-3px); }
 .admin-sidebar-foot { border-top: 1px solid var(--border); padding: 10px; display: flex; flex-direction: column; gap: 2px; }
 .admin-foot-link { min-height: 34px; border-radius: 7px; padding: 0 10px; text-align: left; font-size: 12px; color: var(--text-sub); }
 .admin-foot-link:hover { background: var(--bg-card-highlight); color: var(--text-main); }
@@ -130,13 +157,13 @@ onMounted(() => {
 .admin-user { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-sub); }
 .admin-menu-btn { display: none; width: 34px; height: 34px; flex-direction: column; justify-content: center; gap: 4px; padding: 0 8px; border-radius: 8px; }
 .admin-menu-btn span { height: 1px; background: var(--text-sub); }
-.admin-content { padding: 24px; width: min(1320px, 100%); margin: 0 auto; }
+.admin-content { padding: 24px; width: min(1280px, 100%); margin: 0 auto; }
 .admin-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.28); z-index: 45; }
 @media (max-width: 900px) {
   .admin-shell { grid-template-columns: 1fr; }
   .admin-sidebar { position: fixed; left: 0; top: 0; width: 244px; transform: translateX(-100%); transition: transform .2s ease; }
   .admin-sidebar.is-open { transform: translateX(0); }
-  .admin-backdrop { display: block; }
+  .admin-backdrop { display: block; left: 244px; }
   .admin-menu-btn { display: flex; }
   .admin-content { padding: 16px; }
   .admin-user-name { display: none; }

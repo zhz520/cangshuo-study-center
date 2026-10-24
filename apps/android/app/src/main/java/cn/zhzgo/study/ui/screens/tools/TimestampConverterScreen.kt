@@ -60,11 +60,11 @@ fun TimestampConverterScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("时间戳转换", fontWeight = FontWeight.Bold) },
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
+                title = { Text("时间戳转换") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {

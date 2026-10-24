@@ -5,6 +5,12 @@ import okhttp3.MultipartBody
 import retrofit2.http.*
 
 interface ApiService {
+    @GET("api/data/appearance")
+    suspend fun getMemberAppearance(): MemberAppearance
+
+    @PUT("api/data/appearance")
+    suspend fun saveMemberAppearance(@Body appearance: MemberAppearanceRequest): MemberAppearance
+
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
@@ -56,6 +62,9 @@ interface ApiService {
     @GET("api/data/questions/{id}")
     suspend fun getQuestion(@Path("id") id: Int): Question
 
+    @GET("api/data/questions/{id}/review")
+    suspend fun getQuestionReview(@Path("id") id: Int, @Query("answer_token") answerToken: String?): Question
+
 
     @GET("api/data/daily-content/random")
     suspend fun getDailyContent(): DailyContentResponse
@@ -78,7 +87,7 @@ interface ApiService {
     ): List<LeaderboardUser>
 
     @POST("api/data/progress")
-    suspend fun syncProgress(@Body request: ProgressRequest)
+    suspend fun syncProgress(@Body request: ProgressRequest): ProgressGradeResponse
 
     @DELETE("api/data/progress")
     suspend fun resetProgress(@Query("subject_id") subjectId: String)

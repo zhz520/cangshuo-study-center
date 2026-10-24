@@ -5,6 +5,8 @@
 **/build/
 **/.gradle/
 **/.kotlin/
+**/build-temp/
+apps/android/app/release/
 **/dist/
 **/__pycache__/
 *.pyc
@@ -56,3 +58,7 @@ build_error*.txt
 build_output*.txt
 .DS_Store
 Thumbs.db
+.gradle-user/
+
+temp/
+apps/web/temp/

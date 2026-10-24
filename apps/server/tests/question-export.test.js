@@ -62,12 +62,12 @@ test('CSV is BOM-prefixed, quoted and neutralizes spreadsheet formulas', () => {
   assert.equal(MAX_EXPORT, 12000);
 });
 
-test('exports use a dedicated daily budget that does not inherit the 5000/day reading cap', async () => {
+test('exports use a dedicated daily budget independent of the stricter reading cap', async () => {
   budget.counters.clear();
   const req = { userId: 42, ip: '127.0.0.1', account: { role: 'user', has_subscription: 1 } };
   await chargeExport(req, 12000, budgetDb, 1000);
   await assert.rejects(chargeExport(req, 12000, budgetDb, 2000), { status: 429 });
   budget.counters.clear();
-  for (let hour = 0; hour < 5; hour++) await chargeQuestions(req, 900, budgetDb, hour * 3600000);
-  await assert.rejects(chargeQuestions(req, 900, budgetDb, 5 * 3600000), { status: 429 });
+  for (let hour = 0; hour < 5; hour++) for (let minute = 0; minute < 3; minute++) await chargeQuestions(req, 100, budgetDb, hour * 3600000 + minute * 60000);
+  await assert.rejects(chargeQuestions(req, 1, budgetDb, 5 * 3600000), { status: 429 });
 });

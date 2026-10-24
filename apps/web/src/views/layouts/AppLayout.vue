@@ -1,12 +1,14 @@
 <script setup>
+import BrandLogo from '../../components/BrandLogo.vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { auth } from '../../api';
+import { getTheme, toggleTheme as toggleStoredTheme } from '../../utils/theme';
 
 const route = useRoute();
 const router = useRouter();
 const user = ref({});
-const isDark = ref(false);
+const isDark = ref(getTheme() === 'dark');
 const menuOpen = ref(false);
 const sheetOpen = ref(false);
 
@@ -19,7 +21,6 @@ const navItems = computed(() => [
   { label: '首页', to: '/home', icon: 'home' },
   { label: '题库', to: '/home#subjects', icon: 'book' },
   { label: '学情', to: '/analysis', icon: 'chart' },
-  { label: '统计', to: '/stats', icon: 'bars' },
   { label: '数据', to: '/data', icon: 'layers' },
 ]);
 
@@ -27,7 +28,7 @@ const mobileItems = [
   { label: '首页', to: '/home', icon: 'home' },
   { label: '题库', to: '/home#subjects', icon: 'book' },
   { label: '学情', to: '/analysis', icon: 'chart' },
-  { label: '统计', to: '/stats', icon: 'bars' },
+  { label: '数据', to: '/data', icon: 'layers' },
 ];
 
 const readUser = () => {
@@ -35,17 +36,8 @@ const readUser = () => {
   catch { user.value = {}; }
 };
 
-const applyTheme = () => {
-  const saved = localStorage.getItem('theme');
-  const dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  isDark.value = dark;
-  document.documentElement.classList.toggle('dark', dark);
-};
-
 const toggleTheme = () => {
-  isDark.value = !isDark.value;
-  document.documentElement.classList.toggle('dark', isDark.value);
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light');
+  isDark.value = toggleStoredTheme() === 'dark';
 };
 
 const scrollHash = () => {
@@ -75,7 +67,7 @@ const logout = async () => {
   router.push('/login');
 };
 
-onMounted(() => { readUser(); applyTheme(); scrollHash(); });
+onMounted(() => { readUser(); scrollHash(); });
 watch(() => route.fullPath, () => { readUser(); menuOpen.value = false; sheetOpen.value = false; scrollHash(); });
 </script>
 
@@ -84,7 +76,7 @@ watch(() => route.fullPath, () => { readUser(); menuOpen.value = false; sheetOpe
     <header class="web-topbar">
       <div class="web-topbar-inner">
         <RouterLink to="/home" class="web-brand" aria-label="烁学首页">
-          <span class="web-brand-mark">烁</span>
+          <BrandLogo />
           <span>烁学</span>
         </RouterLink>
 
@@ -95,7 +87,6 @@ watch(() => route.fullPath, () => { readUser(); menuOpen.value = false; sheetOpe
         </nav>
 
         <div class="web-actions">
-          <RouterLink to="/export" class="ui-btn ui-btn-ghost ui-btn-sm hide-mobile">导出题库</RouterLink>
           <button class="web-icon-btn" type="button" :aria-label="isDark ? '切换浅色模式' : '切换深色模式'" @click="toggleTheme">
             <svg v-if="isDark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg>
             <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.5 14.1A8.5 8.5 0 0 1 9.9 3.5 8.5 8.5 0 1 0 20.5 14.1Z"/></svg>
@@ -107,9 +98,6 @@ watch(() => route.fullPath, () => { readUser(); menuOpen.value = false; sheetOpe
                 <p class="text-[13px] font-semibold" style="color:var(--text-main)">{{ displayName }}</p>
                 <p class="ui-small ui-faint">{{ isAdmin ? '管理员账户' : '学习账户' }}</p>
               </div>
-              <button @click="go('/export')">导出题库</button>
-              <button @click="go('/score-query')">联考成绩查询</button>
-              <button @click="go('/download')">下载 Android App</button>
               <button v-if="isAdmin" @click="go('/admin')">管理后台</button>
               <div class="ui-divider my-1"></div>
               <button @click="toggleTheme">{{ isDark ? '切换到浅色模式' : '切换到深色模式' }}</button>
@@ -149,8 +137,6 @@ watch(() => route.fullPath, () => { readUser(); menuOpen.value = false; sheetOpe
       </div>
       <div class="ui-list-card ui-card">
         <button class="ui-row-button" @click="go('/data')"><span class="ui-grow">学习数据</span><span class="ui-faint">›</span></button>
-        <button class="ui-row-button" @click="go('/export')"><span class="ui-grow">导出题库</span><span class="ui-faint">›</span></button>
-        <button class="ui-row-button" @click="go('/score-query')"><span class="ui-grow">成绩查询</span><span class="ui-faint">›</span></button>
         <button class="ui-row-button" @click="go('/download')"><span class="ui-grow">下载 App</span><span class="ui-faint">›</span></button>
         <button v-if="isAdmin" class="ui-row-button" @click="go('/admin')"><span class="ui-grow">管理后台</span><span class="ui-faint">›</span></button>
         <button class="ui-row-button" @click="toggleTheme"><span class="ui-grow">{{ isDark ? '浅色模式' : '深色模式' }}</span><span class="ui-faint">切换</span></button>

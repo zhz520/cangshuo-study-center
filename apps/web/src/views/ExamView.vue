@@ -50,6 +50,8 @@ const showSheet = ref(false); // Answer Sheet Modal
 const mode = ref("all"); // 'all', 'wrong', 'recommendation'
 const displayList = ref([]); // Array of logical indices [0, 1, 2, 5, ...]
 const subjectTitle = ref(""); // Subject Name for Header
+const subjectTotal = ref(null);
+const visibleTotal = computed(() => mode.value === 'all' ? (previewOnly.value ? Math.min(subjectTotal.value ?? 20,20) : subjectTotal.value ?? displayList.value.length) : displayList.value.length);
 const isRecommendation = computed(() => mode.value === 'recommendation');
 
 // === Settings & Preferences ===
@@ -136,6 +138,14 @@ const onTouchEnd = (e) => {
 
 // === Keyboard Navigation ===
 const handleKeydown = (e) => {
+  if (e.key === 'Escape') {
+    showMenu.value = false;
+    showSettings.value = false;
+    showSheet.value = false;
+    showExportModal.value = false;
+    return;
+  }
+  if (showMenu.value || showSettings.value || showSheet.value || showExportModal.value || confirmDialog.show) return;
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
   if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
@@ -192,13 +202,25 @@ const applyProgress = (progress) => {
 
 const saveProgress = async (payload) => {
   try {
+    const question = questions.value.find(q => q.id === payload.question_id);
+    payload.answer_token = question?.answer_token;
     const response = await api.syncProgress(payload);
+    if (response.data.question && question) {
+      const revealed = normalizeApiQuestion(response.data.question);
+      Object.assign(question.content, { answer: revealed.content.answer, analysis: revealed.content.analysis, options: revealed.content.options });
+      question.reviewLoaded = true;
+    }
     const local = userAnswers.value[payload.question_id];
     if (local && typeof response.data.is_correct === 'boolean') local.isCorrect = response.data.is_correct;
+    if (local) { local.submitted = true; local.pending = false; }
     return true;
   } catch (error) {
     const local = userAnswers.value[payload.question_id];
-    if (local) local.submitted = false;
+    if (local) { local.submitted = false; local.pending = false; }
+    if (error.response?.data?.code === 'QUESTION_READ_REQUIRED') {
+      try { const fresh = await api.getQuestion(payload.question_id); questions.value.find(q => q.id === payload.question_id).answer_token = fresh.data.answer_token; }
+      catch { /* The next submission remains blocked until a valid ticket is loaded. */ }
+    }
     toast.value?.add(error.response?.data?.error || '作答未保存，请稍后重新提交', 'error');
     return false;
   }
@@ -218,7 +240,7 @@ const normalizeApiQuestion = (q) => {
           let options = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
 
           // Fix: Handle array format options [{label: 'A', content: '...'}, ...] -> { 'A': '...' }
-          if (Array.isArray(options) && q.type !== 'sort') {
+          if (Array.isArray(options) && q.type !== 'sort' && q.type !== 'material') {
               const optsObj = {};
               options.forEach(opt => {
                   if (opt.label && opt.content !== undefined) {
@@ -269,12 +291,13 @@ const normalizeApiQuestion = (q) => {
 
           return {
               id: q.id,
+              answer_token: q.answer_token,
               subject_name: q.subject_name,
               content: {
                   question: q.content,
                   options: options, // For material, this is SubQuestions array
                   type: q.type,
-                  answer: Array.isArray(cleanAnswer) ? cleanAnswer : (cleanAnswer ? cleanAnswer.split('') : []),
+                  answer: ['fill','text'].includes(q.type) ? String(cleanAnswer ?? '') : Array.isArray(cleanAnswer) ? cleanAnswer : (cleanAnswer ? cleanAnswer.split('') : []),
                   analysis: q.analysis,
                   difficulty: q.difficulty || 1,
                   tags: q.tags || [],
@@ -282,6 +305,17 @@ const normalizeApiQuestion = (q) => {
               }
           };
 };
+
+watch([() => currentQuestion.value?.id, () => userAnswerData.value?.submitted], async ([id, submitted]) => {
+  const question = currentQuestion.value;
+  if (!id || !submitted || question.reviewLoaded || question.content.analysis != null) return;
+  try {
+    const response = await api.getQuestionReview(id, question.answer_token);
+    const revealed = normalizeApiQuestion(response.data);
+    Object.assign(question.content, { answer: revealed.content.answer, analysis: revealed.content.analysis, options: revealed.content.options });
+    question.reviewLoaded = true;
+  } catch (error) { toast.value?.add(error.response?.data?.error || '解析加载失败，请稍后重试', 'error'); }
+});
 
 const loadNextPage = async () => {
   if (!hasMore.value || loadingMore.value || mode.value === 'recommendation') return;
@@ -292,9 +326,11 @@ const loadNextPage = async () => {
     const known = new Set(questions.value.map(q => q.id));
     questions.value.push(...response.data.filter(q => !known.has(q.id)).map(normalizeApiQuestion));
     currentPage.value++;
-    const progress = await api.getProgress();
-    if (Array.isArray(progress.data)) applyProgress(progress.data);
     updateDisplayList(false);
+    try {
+      const progress = await api.getProgress();
+      if (Array.isArray(progress.data)) applyProgress(progress.data);
+    } catch { toast.value?.add('题目已加载，历史作答暂未同步，请稍后刷新', 'warning'); }
   } catch (error) {
     toast.value?.add(error.response?.data?.error || '加载更多题目失败，请稍后重试', 'error');
   } finally { loadingMore.value = false; }
@@ -343,6 +379,11 @@ onMounted(async () => {
     }
 
     // 2. Fetch Progress
+    try {
+      const subjectsResponse = await api.getSubjects(null);
+      const subject = subjectsResponse.data.find(s => Number(s.id) === Number(subjectId));
+      if (subject) subjectTotal.value = Number(subject.question_count);
+    } catch { /* Directory failure should not discard loaded practice. */ }
     const progRes = await api.getProgress();
     if (Array.isArray(progRes.data)) {
       applyProgress(progRes.data);
@@ -459,6 +500,37 @@ const toggleMode = () => {
   updateDisplayList(true);
 };
 
+const restoreAllQuestions = async () => {
+  loading.value = true;
+  loadError.value = '';
+  try {
+    const response = await api.getQuestions(subjectId, { page: 1, limit: PAGE_SIZE });
+    if (Array.isArray(response.data)) {
+      readAccessHeaders(response);
+      questions.value = response.data.map(normalizeApiQuestion);
+      currentPage.value = 1;
+      mode.value = 'all';
+      updateDisplayList(true);
+      const progress = await api.getProgress();
+      if (Array.isArray(progress.data)) applyProgress(progress.data);
+    }
+  } catch (error) {
+    loadError.value = error.response?.data?.error || '返回全部题目失败，请重试';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const toggleSmartPractice = async () => {
+  showMenu.value = false;
+  if (mode.value === 'recommendation') {
+    await restoreAllQuestions();
+    return;
+  }
+  mode.value = 'recommendation';
+  await loadRecommendations();
+};
+
 const showMenu = ref(false);
 
 const handleShuffle = () => {
@@ -486,13 +558,24 @@ const handleShuffle = () => {
 };
 
 const jumpTo = (index) => {
+  if (userAnswerData.value?.pending) return;
   currentIndex.value = index;
   showSheet.value = false;
 };
 
 // Answer Sheet Pagination
 const sheetPage = ref(0);
-const sheetPageSize = 100;
+const sheetPageSize = 50;
+const nextSheetPage = async () => {
+  if (loadingMore.value) return;
+  const target = sheetPage.value + 1;
+  while (target * sheetPageSize >= displayList.value.length && hasMore.value && mode.value !== 'recommendation') {
+    const previous = currentPage.value;
+    await loadNextPage();
+    if(currentPage.value === previous) break;
+  }
+  if (target * sheetPageSize < displayList.value.length) sheetPage.value = target;
+};
 
 const sheetGroups = computed(() => {
   const total = displayList.value.length;
@@ -526,7 +609,7 @@ watch(showSheet, (val) => {
 // Interaction
 const handleAnswer = async (val) => {
   // If user locked, do nothing
-  if (userAnswerData.value && userAnswerData.value.submitted) return;
+  if (userAnswerData.value && (userAnswerData.value.submitted || userAnswerData.value.pending)) return;
 
   triggerHaptic('light');
 
@@ -553,17 +636,15 @@ const handleAnswer = async (val) => {
   }
 
   // 2. Single/Judge Logic (Immediate Submit)
-  const correctAns = q.content.answer; // Array ["A"]
-  const isCorrect = correctAns.includes(val) && correctAns.length === 1;
-
-  userAnswers.value[q.id] = { answer: [val], isCorrect, submitted: true };
-  await saveProgress({
+  userAnswers.value[q.id] = { answer: [val], isCorrect: false, submitted: false, pending: true };
+  const saved = await saveProgress({
     question_id: q.id,
-    is_correct: isCorrect,
     answer: JSON.stringify([val]),
   });
+  userAnswers.value[q.id].pending = false;
+  userAnswers.value[q.id].submitted = saved;
 
-  if (autoAdvance.value && isCorrect && !isLast.value) {
+  if (saved && autoAdvance.value && userAnswers.value[q.id].isCorrect && !isLast.value) {
     setTimeout(() => next(), autoAdvanceDelay.value);
   }
 };
@@ -578,17 +659,11 @@ const submitMulti = async () => {
 
   triggerHaptic('light');
 
-  const userAns = ansData.answer.sort().join("");
-  const correctAns = q.content.answer.sort().join("");
-
-  const isCorrect = userAns === correctAns;
-
-  // Update
-  userAnswers.value[q.id] = { ...ansData, isCorrect, submitted: true };
+  if (ansData.pending) return;
+  userAnswers.value[q.id] = { ...ansData, isCorrect: false, submitted: false, pending: true };
 
   await saveProgress({
     question_id: q.id,
-    is_correct: isCorrect,
     answer: JSON.stringify(ansData.answer),
   });
 };
@@ -598,23 +673,19 @@ watch(currentQuestion, () => {
   fillInput.value = "";
 });
 
-const submitFill = () => {
+const submitFill = async () => {
   if (!fillInput.value.trim()) return toast.value?.add("请输入答案", "warning");
   const q = currentQuestion.value;
-  const correctAns = q.content.answer;
-
-  const isCorrect =
-    fillInput.value.trim().toLowerCase() ===
-    correctAns.toString().trim().toLowerCase();
+  if (userAnswers.value[q.id]?.pending) return;
 
   userAnswers.value[q.id] = {
     answer: fillInput.value,
-    isCorrect,
-    submitted: true,
+    isCorrect: false,
+    submitted: false,
+    pending: true,
   };
-  saveProgress({
+  await saveProgress({
     question_id: q.id,
-    is_correct: isCorrect,
     answer: fillInput.value,
   });
 };
@@ -655,20 +726,17 @@ const submitSort = async () => {
     const q = currentQuestion.value;
     // Current order is in sortList
     const userAns = sortList.value; // Array of strings
-    const correctAns = q.content.answer; // Array of strings
-
-    // Compare arrays
-    const isCorrect = JSON.stringify(userAns) === JSON.stringify(correctAns);
+    if (userAnswers.value[q.id]?.pending) return;
 
     userAnswers.value[q.id] = {
         answer: userAns,
-        isCorrect,
-        submitted: true
+        isCorrect: false,
+        submitted: false,
+        pending: true
     };
 
     await saveProgress({
         question_id: q.id,
-        is_correct: isCorrect,
         answer: JSON.stringify(userAns)
     });
 };
@@ -713,58 +781,23 @@ const submitMaterial = async () => {
     // Let's require at least one answer
     if (Object.keys(materialAnswers.value).length === 0) return toast.value?.add("请至少回答一个小题", "warning");
 
-    let allCorrect = true;
-
-    // Check correctness
-    subQuestions.forEach((sq, idx) => {
-        const userAns = materialAnswers.value[idx];
-        const correctAns = sq.answer; // "A" or ["A","B"] or "TRUE"
-
-        let isSubCorrect = false;
-
-        if (!userAns) {
-            isSubCorrect = false;
-        } else if (sq.type === 'multiple') {
-            // Compare arrays
-            const u = Array.isArray(userAns) ? userAns.sort().join('') : String(userAns);
-            const c = Array.isArray(correctAns) ? correctAns.sort().join('') : String(correctAns);
-            isSubCorrect = u === c;
-        } else if (sq.type === 'judge') {
-             // CorrectAns might be "TRUE"/"FALSE" or "A"/"B" (if normalized)
-             // Admin saves as "TRUE"/"FALSE".
-             // ExamView normalizes main q judge options to A/B, but maybe not sub judge?
-             // My normalization above for Material Sub Judge set options to Correct/Error.
-             // But Answer check needs to match.
-             // Let's rely on what Admin saves: "TRUE"/"FALSE".
-             // User clicks "Correct" -> we should store "TRUE".
-             // User clicks "Error" -> we should store "FALSE".
-             // My UI logic needs to send TRUE/FALSE.
-
-             isSubCorrect = userAns === correctAns;
-        } else {
-             // Single / Fill
-             // UserAns for fill might be text. CorrectAns is string.
-             isSubCorrect = String(userAns).trim().toLowerCase() === String(correctAns).trim().toLowerCase();
-        }
-
-        if (!isSubCorrect) allCorrect = false;
-    });
-
+    if (userAnswers.value[q.id]?.pending) return;
     userAnswers.value[q.id] = {
         answer: materialAnswers.value,
-        isCorrect: allCorrect,
-        submitted: true
+        isCorrect: false,
+        submitted: false,
+        pending: true
     };
 
     await saveProgress({
         question_id: q.id,
-        is_correct: allCorrect,
         answer: JSON.stringify(materialAnswers.value)
     });
 };
 
 // Navigation
 const next = async () => {
+  if (userAnswerData.value?.pending) return;
   if (currentIndex.value >= displayList.value.length - 1 && hasMore.value) await loadNextPage();
   if (currentIndex.value < displayList.value.length - 1) {
     currentIndex.value++;
@@ -773,6 +806,7 @@ const next = async () => {
   }
 };
 const prev = () => {
+  if (userAnswerData.value?.pending) return;
   if (!isFirst.value) {
     currentIndex.value--;
     nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
@@ -966,9 +1000,11 @@ const handleAiExplain = async () => {
     <div class="exam-progress">
         <div
             class="exam-progress-bar"
-            :style="{ width: `${((currentIndex + 1) / (displayList.length || 1)) * 100}%` }"
+            :style="{ width: `${Math.min(100, ((currentIndex + 1) / (visibleTotal || 1)) * 100)}%` }"
         ></div>
     </div>
+
+    <div v-if="showMenu" class="exam-menu-backdrop" @click="showMenu = false"></div>
 
     <!-- Top Bar -->
     <header class="exam-topbar print:hidden">
@@ -989,62 +1025,72 @@ const handleAiExplain = async () => {
         <span class="exam-counter">
           <span class="exam-counter-current">{{ currentIndex + 1 }}</span>
           <span class="exam-counter-sep">/</span>
-          <span>{{ displayList.length }}</span>
+          <span>{{ visibleTotal }}</span>
         </span>
       </div>
 
-      <div class="flex gap-1.5 sm:gap-2 relative">
+      <div class="exam-menu-wrap">
         <button
           @click="showMenu = !showMenu"
           class="exam-icon-btn"
-          aria-label="更多操作"
+          aria-label="练习与工具"
+          :aria-expanded="showMenu"
+          aria-haspopup="menu"
         >
-          <span>⋮</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>
         </button>
-
-        <!-- Backdrop for dropdown -->
-        <div v-if="showMenu" @click="showMenu = false" class="fixed inset-0 z-40"></div>
 
         <!-- Dropdown Menu -->
         <div
           v-if="showMenu"
           class="exam-menu"
+          role="menu"
+          aria-label="练习与工具"
         >
+            <p class="exam-menu-label">练习方式</p>
             <button
-                @click="showConfirm('智能练习', '由于前端限制，请返回首页选择科目重新进入来切换到智能练习模式。或我们可以加一个按钮触发。', 'info').then(() => { if(mode !== 'recommendation') { mode = 'recommendation'; loadRecommendations(); } else { mode = 'all'; window.location.reload(); } }); showMenu = false"
-                class="px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+                @click="toggleSmartPractice"
+                class="exam-menu-item"
+                :class="{ 'is-active': mode === 'recommendation' }"
+                role="menuitem"
             >
-                <span class="text-lg">🧠</span>
-                <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">{{ mode === 'recommendation' ? '退出智能推荐' : '智能练习' }}</span>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8V20"/><path d="M15 4a3 3 0 0 1 3 3v1a3 3 0 0 1 1 5.8V16a3 3 0 0 1-4 2.8V20"/><path d="M9 4a3 3 0 0 1 6 0"/></svg>
+                <span class="exam-menu-item-copy"><strong>{{ mode === 'recommendation' ? '退出智能推荐' : '智能练习' }}</strong><small>{{ mode === 'recommendation' ? '恢复当前科目的全部题目' : '按错题与掌握情况优先推荐' }}</small></span>
+                <span v-if="mode === 'recommendation'" class="exam-menu-state">进行中</span>
             </button>
             <button
                 @click="toggleMode(); showMenu = false"
-                class="px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+                class="exam-menu-item"
+                :class="{ 'is-active': mode === 'wrong' }"
+                role="menuitem"
             >
-                <span class="text-lg">⚡</span>
-                <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">{{ mode === 'wrong' ? '切换回全部' : '错题攻克' }}</span>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3 3 7.5 12 12l9-4.5L12 3Z"/><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg>
+                <span class="exam-menu-item-copy"><strong>{{ mode === 'wrong' ? '返回全部题目' : '错题攻克' }}</strong><small>{{ mode === 'wrong' ? '按原顺序继续练习' : '只保留当前科目的错题' }}</small></span>
             </button>
             <button
                 @click="handleShuffle"
-                class="px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+                class="exam-menu-item"
+                role="menuitem"
             >
-                <span class="text-lg">🔀</span>
-                <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">乱序重排(未做优先)</span>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 6h3c5 0 6 12 11 12h4"/><path d="m18 15 3 3-3 3"/><path d="M3 18h3c2.3 0 3.8-2.5 5.2-5.4"/><path d="M13.1 8.5C14.2 7 15.5 6 17 6h4"/><path d="m18 3 3 3-3 3"/></svg>
+                <span class="exam-menu-item-copy"><strong>乱序重排</strong><small>未做题目优先，已做题目排在后面</small></span>
             </button>
-            <div class="h-px bg-slate-100 dark:bg-slate-700/50 my-1 mx-2"></div>
+            <p class="exam-menu-label">工具</p>
             <button
                 @click="showExportModal = true; showMenu = false"
-                class="px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+                class="exam-menu-item"
+                role="menuitem"
             >
-                <span class="text-lg">📤</span>
-                <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">导出/打印</span>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+                <span class="exam-menu-item-copy"><strong>导出与打印</strong><small>练习卷或错题集</small></span>
             </button>
             <button
                 @click="showSettings = true; showMenu = false"
-                class="px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+                class="exam-menu-item"
+                role="menuitem"
             >
-                <span class="text-lg">⚙️</span>
-                <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">做题设置</span>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.1.36.32.7.6 1 .3.26.7.4 1.1.4h.09v4h-.09a1.7 1.7 0 0 0-1.7.6Z"/></svg>
+                <span class="exam-menu-item-copy"><strong>做题设置</strong><small>自动跳转、滑动、字号与反馈</small></span>
             </button>
         </div>
       </div>
@@ -1149,12 +1195,12 @@ const handleAiExplain = async () => {
           </div>
 
           <!-- Options Area -->
-          <div v-if="currentQuestion.content.options && currentQuestion.content.type !== 'fill' && currentQuestion.content.type !== 'sort' && Object.keys(currentQuestion.content.options).length > 0" class="exam-options">
+          <div v-if="currentQuestion.content.options && !['fill','text','sort','material'].includes(currentQuestion.content.type) && Object.keys(currentQuestion.content.options).length > 0" class="exam-options">
             <button
               v-for="(optVal, optKey) in currentQuestion.content.options"
               :key="optKey"
               @click="handleAnswer(optKey)"
-              :disabled="!!userAnswerData?.submitted"
+              :disabled="!!userAnswerData?.submitted || !!userAnswerData?.pending"
               class="exam-option"
               :class="{
                 'is-selected': !userAnswerData?.submitted && userAnswerData?.answer?.includes(optKey),
@@ -1462,7 +1508,7 @@ const handleAiExplain = async () => {
         <div class="exam-sheet-stats">
            <div class="exam-sheet-stat">
                <span>题目</span>
-               <strong>{{ stats.total }}</strong>
+               <strong>{{ visibleTotal }}</strong>
            </div>
            <div class="exam-sheet-stat is-correct">
                <span>正确</span>
@@ -1492,6 +1538,11 @@ const handleAiExplain = async () => {
         </div>
 
         <!-- Grid -->
+        <div class="exam-sheet-pagination">
+          <button class="ui-btn ui-btn-ghost ui-btn-sm" :disabled="sheetPage === 0 || loadingMore" @click="sheetPage--">上一页</button>
+          <span>第 {{ sheetPage + 1 }} 页 · 每页 50 题</span>
+          <button class="ui-btn ui-btn-ghost ui-btn-sm" :disabled="loadingMore || ((sheetPage + 1) * sheetPageSize >= displayList.length && !hasMore)" @click="nextSheetPage">{{ loadingMore ? '加载中…' : '下一页' }}</button>
+        </div>
         <div class="exam-sheet-body">
           <div class="exam-sheet-grid">
             <button
@@ -1589,7 +1640,9 @@ const handleAiExplain = async () => {
             <!-- Header -->
             <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700/50">
                 <div class="flex items-center gap-3">
-                    <span class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-lg">⚙️</span>
+                    <span class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-500 dark:text-slate-300">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.1.36.32.7.6 1 .3.26.7.4 1.1.4h.09v4h-.09a1.7 1.7 0 0 0-1.7.6Z"/></svg>
+                    </span>
                     <div>
                         <h3 class="font-bold text-slate-800 dark:text-slate-100">做题设置</h3>
                         <p class="text-[11px] text-slate-400">自定义你的做题体验</p>
@@ -1603,7 +1656,7 @@ const handleAiExplain = async () => {
                 <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl">
                     <div class="flex-1 mr-4">
                         <div class="flex items-center gap-2">
-                            <span class="text-base">🚀</span>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="text-slate-500" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z"/></svg>
                             <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">答对自动跳转</span>
                         </div>
                         <p class="text-[11px] text-slate-400 mt-1 ml-7">单选/判断答对后自动切换到下一题</p>
@@ -1639,7 +1692,7 @@ const handleAiExplain = async () => {
                 <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl">
                     <div class="flex-1 mr-4">
                         <div class="flex items-center gap-2">
-                            <span class="text-base">👆</span>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="text-slate-500" aria-hidden="true"><path d="M5 12h14M12 5l-7 7 7 7M12 5l7 7-7 7"/></svg>
                             <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">滑动切换题目</span>
                         </div>
                         <p class="text-[11px] text-slate-400 mt-1 ml-7">左右滑动手势切换上/下一题</p>
@@ -1656,7 +1709,7 @@ const handleAiExplain = async () => {
                 <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl">
                     <div class="flex-1 mr-4">
                         <div class="flex items-center gap-2">
-                            <span class="text-base">📳</span>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="text-slate-500" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 8v8M21 8v8"/></svg>
                             <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">震动反馈</span>
                         </div>
                         <p class="text-[11px] text-slate-400 mt-1 ml-7">答题和滑动时提供触觉反馈 (仅支持部分设备)</p>
@@ -1732,9 +1785,7 @@ const handleAiExplain = async () => {
     <div v-if="showExportModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
         <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showExportModal = false"></div>
         <div class="relative w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 space-y-6 animate-fade-in-up">
-            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <span>🖨️</span> 导出与打印
-            </h3>
+            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">导出与打印</h3>
 
             <div class="space-y-4">
                 <div class="space-y-2">
@@ -1773,13 +1824,13 @@ const handleAiExplain = async () => {
                     @click="handleExportWord"
                     class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
                 >
-                    <span>📄</span> 导出 Word
+                    导出 Word
                 </button>
                 <button
                     @click="handlePrint"
                     class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2"
                 >
-                    <span>🖨️</span> 直接打印
+                    直接打印
                 </button>
             </div>
         </div>

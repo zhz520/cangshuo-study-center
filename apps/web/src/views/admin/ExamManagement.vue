@@ -1,75 +1,67 @@
 <template>
-  <div class="p-6 space-y-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center">
-      <div>
-        <h2 class="text-2xl font-black text-slate-800 dark:text-white tracking-tight">考试系统管理</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">监控考试记录并管理用户重考权限</p>
-      </div>
+  <div class="admin-workspace ui-page admin-stack">
+    <div class="admin-page-bar">
+      <AdminPageHeading title="考试系统" description="监控考试记录并管理用户重考权限。" />
     </div>
 
     <!-- 试卷列表 Table -->
-    <div class="glass-card overflow-hidden">
-      <div class="px-8 py-5 border-b border-slate-200/60 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
-        <h3 class="text-sm font-black text-slate-700 dark:text-slate-200 flex items-center gap-2">
-          <span>📋</span> 试卷列表
-        </h3>
-      </div>
+    <div class="admin-table-card">
+      <div class="admin-table-toolbar"><strong>试卷列表</strong><span>{{ papers.length }} 份</span></div>
       
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
+        <table class="w-full text-left border-collapse admin-data-table">
           <thead>
-            <tr class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">
-              <th class="px-8 py-4">ID</th>
-              <th class="px-8 py-4">试卷名称</th>
-              <th class="px-8 py-4">题目与分值</th>
-              <th class="px-8 py-4">时长</th>
-              <th class="px-8 py-4">创建时间</th>
-              <th class="px-8 py-4">状态</th>
-              <th class="px-8 py-4 text-right">管理</th>
+            <tr>
+              <th>ID</th>
+              <th>试卷名称</th>
+              <th>题目与分值</th>
+              <th>时长</th>
+              <th>创建时间</th>
+              <th>状态</th>
+              <th class="text-right">管理</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
-            <tr v-if="loadingPapers" class="animate-pulse">
-              <td colspan="7" class="px-8 py-10 text-center text-slate-400 font-bold text-sm">加载中...</td>
+            <tr v-if="loadingPapers">
+              <td colspan="7"><div class="admin-empty admin-table-empty"><span class="ui-spinner"></span><span class="admin-empty-title">正在加载试卷</span></div></td>
             </tr>
-            <tr v-else-if="papers.length === 0" class="px-8 py-5">
-              <td colspan="7" class="px-8 py-10 text-center text-slate-400 font-bold text-sm">暂无试卷数据</td>
+            <tr v-else-if="papers.length === 0">
+              <td colspan="7"><div class="admin-empty admin-table-empty"><span class="admin-empty-title">暂无试卷</span><span class="admin-empty-copy">创建考试后，试卷会显示在这里。</span></div></td>
             </tr>
-            <tr v-for="paper in papers" :key="paper.id" class="group hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors">
-              <td class="px-8 py-5 text-mono text-xs font-bold text-slate-400">#{{ paper.id }}</td>
-              <td class="px-8 py-5">
+            <tr v-for="paper in papers" :key="paper.id">
+              <td class="font-mono text-[11px]" style="color:var(--text-quote)">#{{ paper.id }}</td>
+              <td class="px-4 py-3">
                 <div class="font-bold text-slate-700 dark:text-slate-200">{{ paper.title }}</div>
               </td>
-              <td class="px-8 py-5">
+              <td class="px-4 py-3">
                 <div class="flex flex-col gap-1">
                   <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">{{ paper.question_count }} 题</span>
                   <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">满分 {{ paper.total_score }} 分</span>
                 </div>
               </td>
-              <td class="px-8 py-5 text-sm font-bold text-slate-600 dark:text-slate-300">
+              <td class="px-4 py-3 text-sm font-bold text-slate-600 dark:text-slate-300">
                 {{ paper.duration_minutes }} 分钟
               </td>
-              <td class="px-8 py-5">
+              <td class="px-4 py-3">
                 <div class="text-xs text-slate-500">
                   {{ new Date(paper.created_at).toLocaleDateString() }}
                 </div>
               </td>
-              <td class="px-8 py-5">
+              <td class="px-4 py-3">
                  <button 
                     @click="togglePaperStatus(paper)" 
                     :disabled="statusLoading === paper.id"
-                    class="px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
+                    class="px-2 py-1 rounded text-[10px] uppercase transition-all admin-control"
                     :class="paper.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
                 >
                     {{ statusLoading === paper.id ? '更新中...' : (paper.is_active ? '已上线' : '已下线') }}
                 </button>
               </td>
-              <td class="px-8 py-5 text-right">
-                <button @click="viewRecords(paper)" class="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-black hover:bg-indigo-100 transition-all mr-2">
+              <td class="px-4 py-3 text-right">
+                <button @click="viewRecords(paper)" class="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs hover:bg-indigo-100 transition-all mr-2 admin-control">
                    查看记录
                  </button>
-                 <button @click="viewPaperQuestions(paper)" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-black hover:bg-slate-200 transition-all">
+                 <button @click="viewPaperQuestions(paper)" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs hover:bg-slate-200 transition-all admin-control">
                    题目管理
                  </button>
               </td>
@@ -80,61 +72,61 @@
     </div>
 
     <!-- Records Sidebar/Modal Overlay -->
-    <div v-if="drawerVisible" class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-md transition-all animate-fade-in">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-4xl h-full shadow-2xl flex flex-col animate-slide-left border-l border-slate-200 dark:border-slate-700">
-            <div class="p-8 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+    <div v-if="drawerVisible" class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 transition-all animate-fade-in">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-4xl h-full flex flex-col animate-slide-left border-l border-slate-200 dark:border-slate-700">
+            <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                 <div>
-                  <h3 class="text-xl font-black text-slate-800 dark:text-white">考试记录</h3>
+                  <h3 class="text-xl text-slate-800 dark:text-white">考试记录</h3>
                   <p class="text-xs text-slate-500 font-bold">{{ currentPaper?.title }}</p>
                 </div>
-                <button @click="drawerVisible = false" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 text-slate-400 transition-colors">✕</button>
+                <button @click="drawerVisible = false" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 text-slate-400 transition-colors admin-control">✕</button>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-8 pt-4">
-                <table class="w-full text-left border-collapse">
+            <div class="flex-1 overflow-y-auto p-5 pt-4">
+                <table class="w-full text-left border-collapse admin-data-table">
                   <thead>
-                    <tr class="text-[10px] text-slate-400 uppercase tracking-widest font-black border-b border-slate-100 dark:border-slate-700">
-                      <th class="py-4">考生</th>
-                      <th class="py-4 text-center">状态</th>
-                      <th class="py-4 text-center">得分</th>
-                      <th class="py-4 text-center">开始时间</th>
-                      <th class="py-4 text-right">允许补考</th>
+                    <tr class="text-[10px] text-slate-400 uppercase border-b border-slate-100 dark:border-slate-700">
+                      <th class="">考生</th>
+                      <th class="text-center">状态</th>
+                      <th class="text-center">得分</th>
+                      <th class="text-center">开始时间</th>
+                      <th class="text-right">允许补考</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-50 dark:divide-slate-700/50">
                     <tr v-if="loadingRecords" class="animate-pulse">
-                      <td colspan="5" class="py-10 text-center text-slate-300 font-black text-xs">加载记录中...</td>
+                      <td colspan="5" class="py-10 text-center text-slate-300 text-xs">加载记录中...</td>
                     </tr>
                     <tr v-else-if="records.length === 0">
-                      <td colspan="5" class="py-10 text-center text-slate-300 font-black text-xs">暂时没有考生参加该场考试</td>
+                      <td colspan="5" class="py-10 text-center text-slate-300 text-xs">暂时没有考生参加该场考试</td>
                     </tr>
                     <tr v-for="record in records" :key="record.id" class="text-sm font-medium">
-                      <td class="py-4">
+                      <td class="">
                         <div class="font-bold text-slate-700 dark:text-slate-200">{{ record.username }}</div>
                       </td>
-                      <td class="py-4 text-center">
-                        <span :class="getStatusClass(record.status)" class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
+                      <td class="text-center">
+                        <span :class="getStatusClass(record.status)" class="px-2 py-0.5 rounded-full text-[10px] uppercase">
                           {{ getStatusText(record.status) }}
                         </span>
                       </td>
-                      <td class="py-4 text-center">
+                      <td class="text-center">
                         <span :class="getScoreClass(record)" class="font-bold">
                           {{ record.status === 'abandoned' ? 0 : record.score }}
                         </span>
                       </td>
-                      <td class="py-4 text-center text-xs text-slate-400">
+                      <td class="text-center text-xs text-slate-400">
                         {{ new Date(record.start_time).toLocaleString() }}
                       </td>
-                      <td class="py-4 text-right">
+                      <td class="text-right">
                         <div class="flex justify-end items-center gap-3">
                           <button 
                             @click="handleExportRecord(record)" 
                             :disabled="exportLoading === record.id"
-                            class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-indigo-600"
+                            class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-indigo-600 admin-control"
                             title="导出为 Word"
                           >
                             <span v-if="exportLoading === record.id" class="animate-spin inline-block">⏳</span>
-                            <span v-else>📄</span>
+                            <span v-else>文件</span>
                           </button>
                           <label class="relative inline-flex items-center cursor-pointer" :disabled="record.status === 'in_progress'">
                             <input type="checkbox" v-model="record.can_retry" @change="(e) => handleRetryChange(record, e.target.checked)" class="sr-only peer" :disabled="record.status === 'in_progress'">
@@ -152,12 +144,12 @@
                         <button 
                           @click="changePage(recordPage - 1)" 
                           :disabled="recordPage <= 1"
-                          class="px-4 py-2 bg-slate-50 dark:bg-slate-700 rounded-lg text-[10px] font-black uppercase tracking-wider disabled:opacity-30 hover:bg-slate-100 transition-colors"
+                          class="px-4 py-2 bg-slate-50 dark:bg-slate-700 rounded-lg text-[10px] uppercase disabled:opacity-30 hover:bg-slate-100 transition-colors admin-control"
                         >Prev</button>
                         <button 
                           @click="changePage(recordPage + 1)" 
                           :disabled="recordPage * 10 >= totalRecords"
-                          class="px-4 py-2 bg-slate-50 dark:bg-slate-700 rounded-lg text-[10px] font-black uppercase tracking-wider disabled:opacity-30 hover:bg-slate-100 transition-colors"
+                          class="px-4 py-2 bg-slate-50 dark:bg-slate-700 rounded-lg text-[10px] uppercase disabled:opacity-30 hover:bg-slate-100 transition-colors admin-control"
                         >Next</button>
                     </div>
                 </div>
@@ -166,38 +158,38 @@
     </div>
 
     <!-- Questions Management Drawer -->
-    <div v-if="questionsDrawerVisible" class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-md transition-all animate-fade-in">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-5xl h-full shadow-2xl flex flex-col animate-slide-left border-l border-slate-200 dark:border-slate-700">
-            <div class="p-8 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+    <div v-if="questionsDrawerVisible" class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 transition-all animate-fade-in">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-5xl h-full flex flex-col animate-slide-left border-l border-slate-200 dark:border-slate-700">
+            <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
                 <div>
-                   <h3 class="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
-                       <span>📝</span> 题目管理
+                   <h3 class="text-xl text-slate-800 dark:text-white flex items-center gap-2">
+                       题目管理
                    </h3>
-                   <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">{{ currentPaper?.title }}</p>
+                   <p class="text-xs text-slate-500 font-bold uppercase">{{ currentPaper?.title }}</p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button @click="openAddPaperQuestion" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-600/20 hover:scale-105 transition-all">
+                    <button @click="openAddPaperQuestion" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs transition-all admin-control">
                       + 添加题目
                     </button>
-                    <button @click="questionsDrawerVisible = false" class="w-10 h-10 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center hover:bg-slate-50 text-slate-400 transition-colors shadow-sm">✕</button>
+                    <button @click="questionsDrawerVisible = false" class="w-10 h-10 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center hover:bg-slate-50 text-slate-400 transition-colors admin-control">✕</button>
                 </div>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div class="flex-1 overflow-y-auto p-5 custom-scrollbar">
                 <div v-if="loadingPaperQuestions" class="py-20 text-center animate-pulse">
                     <div class="w-10 h-10 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4"></div>
-                    <p class="text-slate-400 font-bold text-xs uppercase tracking-widest">加载题目中...</p>
+                    <p class="text-slate-400 font-bold text-xs uppercase">加载题目中...</p>
                 </div>
-                <div v-else-if="paperQuestions.length === 0" class="py-20 text-center border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-3xl">
+                <div v-else-if="paperQuestions.length === 0" class="py-20 text-center border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-xl">
                     <p class="text-slate-400 font-bold text-sm">此试卷暂无题目</p>
                 </div>
                 <div v-else class="space-y-4">
-                    <div v-for="q in paperQuestions" :key="q.id" class="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-white/5 group hover:border-indigo-200 transition-all">
+                    <div v-for="q in paperQuestions" :key="q.id" class="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-white/5 group hover:border-indigo-200 transition-all">
                         <div class="flex justify-between items-start gap-4">
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <span class="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-lg font-black text-[10px]">{{ q.question_index }}</span>
-                                    <span class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded text-[10px] font-black uppercase tracking-wider">{{ q.type }}</span>
+                                    <span class="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-lg text-[10px]">{{ q.question_index }}</span>
+                                    <span class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded text-[10px] uppercase">{{ q.type }}</span>
                                     <span class="text-[10px] font-bold text-slate-400">ID: {{ q.id }}</span>
                                 </div>
                                 <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 leading-relaxed line-clamp-2">{{ q.content }}</h4>
@@ -207,14 +199,14 @@
                                 </div>
                             </div>
                             <div class="flex gap-2">
-                                <button @click="toggleQuestionStatus(q)" class="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:text-indigo-600 transition-colors" :title="q.is_active ? '停用' : '启用'">
-                                   {{ q.is_active ? '🚫' : '✅' }}
+                                <button @click="toggleQuestionStatus(q)" class="p-2 bg-white dark:bg-slate-700 rounded-lg hover:text-indigo-600 transition-colors admin-control" :title="q.is_active ? '停用' : '启用'">
+                                   {{ q.is_active ? '下线' : '上线' }}
                                 </button>
-                                <button @click="openEditPaperQuestion(q)" class="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:text-indigo-600 transition-colors" title="编辑">
-                                   ✏️
+                                <button @click="openEditPaperQuestion(q)" class="p-2 bg-white dark:bg-slate-700 rounded-lg hover:text-indigo-600 transition-colors admin-control" title="编辑">
+                                   编辑
                                 </button>
-                                <button @click="deletePaperQuestion(q.id)" class="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:text-rose-600 transition-colors" title="删除">
-                                   🗑️
+                                <button @click="deletePaperQuestion(q.id)" class="p-2 bg-white dark:bg-slate-700 rounded-lg hover:text-rose-600 transition-colors admin-control" title="删除">
+                                   删除
                                 </button>
                             </div>
                         </div>
@@ -225,26 +217,26 @@
     </div>
 
     <!-- Paper Question Edit Modal -->
-    <div v-if="showPaperQuestionModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col border border-white/20">
-            <div class="px-8 py-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                <h3 class="text-lg font-black text-slate-800 dark:text-white">{{ editingPaperQuestion.id ? '编辑试卷题目' : '添加试卷题目' }}</h3>
-                <button @click="showPaperQuestionModal = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">×</button>
+    <div v-if="showPaperQuestionModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 animate-fade-in">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-xl flex flex-col border border-white/20">
+            <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                <h3 class="text-lg text-slate-800 dark:text-white">{{ editingPaperQuestion.id ? '编辑试卷题目' : '添加试卷题目' }}</h3>
+                <button @click="showPaperQuestionModal = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold admin-control">×</button>
             </div>
-            <div class="p-8 space-y-5">
+            <div class="p-5 space-y-5">
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-1.5">
                         <label class="text-xs font-bold text-slate-500 ml-1">题目索引 (排序)</label>
-                        <input type="number" v-model="editingPaperQuestion.question_index" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                        <input type="number" v-model="editingPaperQuestion.question_index" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none ui-input">
                     </div>
                     <div class="space-y-1.5">
                         <label class="text-xs font-bold text-slate-500 ml-1">题目分值</label>
-                        <input type="number" v-model="editingPaperQuestion.score" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                        <input type="number" v-model="editingPaperQuestion.score" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none ui-input">
                     </div>
                 </div>
                 <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-500 ml-1">题目类型</label>
-                    <select v-model="editingPaperQuestion.type" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                    <select v-model="editingPaperQuestion.type" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none ui-select">
                         <option value="single">单选题</option>
                         <option value="multiple">多选题</option>
                         <option value="judge">判断题</option>
@@ -253,18 +245,18 @@
                 </div>
                 <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-500 ml-1">题目内容</label>
-                    <textarea v-model="editingPaperQuestion.content" rows="3" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none" placeholder="题干内容..."></textarea>
+                    <textarea v-model="editingPaperQuestion.content" rows="3" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none ui-textarea" placeholder="题干内容..."></textarea>
                 </div>
 
                 <!-- Options -->
                 <div v-if="editingPaperQuestion.type !== 'fill'" class="space-y-3">
                     <label class="text-xs font-bold text-slate-500 ml-1">选项设置</label>
                     <div v-for="(opt, idx) in editingPaperQuestion.options" :key="idx" class="flex items-center gap-3">
-                        <span class="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded-lg text-xs font-black">{{ opt.label }}</span>
-                        <input type="text" v-model="opt.content" class="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none" placeholder="选项内容...">
-                        <button v-if="editingPaperQuestion.options.length > 2" @click="editingPaperQuestion.options.splice(idx, 1)" class="text-rose-500 hover:text-rose-600">✕</button>
+                        <span class="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded-lg text-xs">{{ opt.label }}</span>
+                        <input type="text" v-model="opt.content" class="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none ui-input" placeholder="选项内容...">
+                        <button v-if="editingPaperQuestion.options.length > 2" @click="editingPaperQuestion.options.splice(idx, 1)" class="text-rose-500 hover:text-rose-600 admin-control">✕</button>
                     </div>
-                    <button @click="addOption" class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">+ 添加选项</button>
+                    <button @click="addOption" class="text-[10px] text-indigo-600 uppercase admin-control">+ 添加选项</button>
                 </div>
 
                 <!-- Answer -->
@@ -282,13 +274,13 @@
                             <span class="text-sm font-bold text-slate-600 group-hover:text-indigo-600">{{ opt.label }}</span>
                         </label>
                     </div>
-                    <input v-else type="text" v-model="editingPaperQuestion.answer" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none" placeholder="如果是填空题，请输入答案内容...">
+                    <input v-else type="text" v-model="editingPaperQuestion.answer" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none ui-input" placeholder="如果是填空题，请输入答案内容...">
                 </div>
 
                 <!-- Analysis -->
                 <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-500 ml-1">题目解析</label>
-                    <textarea v-model="editingPaperQuestion.analysis" rows="2" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none" placeholder="题目解析内容..."></textarea>
+                    <textarea v-model="editingPaperQuestion.analysis" rows="2" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none ui-textarea" placeholder="题目解析内容..."></textarea>
                 </div>
 
                  <div class="flex items-center gap-3 py-2">
@@ -298,9 +290,9 @@
                     </label>
                 </div>
             </div>
-            <div class="px-8 py-5 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3 bg-slate-50/50 dark:bg-slate-800/30">
-                <button @click="showPaperQuestionModal = false" class="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 font-bold text-xs hover:bg-slate-100 transition-colors">取消</button>
-                <button @click="savePaperQuestion" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-95 transition-all">保存题目</button>
+            <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3 bg-slate-50/50 dark:bg-slate-800/30">
+                <button @click="showPaperQuestionModal = false" class="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 font-bold text-xs hover:bg-slate-100 transition-colors admin-control">取消</button>
+                <button @click="savePaperQuestion" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-xs transition-all admin-control">保存题目</button>
             </div>
         </div>
     </div>
@@ -311,6 +303,7 @@
 </template>
 
 <script setup>
+import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
 import { ref, onMounted } from 'vue';
 import { admin } from '../../api';
 import Toast from '../../components/ui/Toast.vue';

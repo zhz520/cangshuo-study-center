@@ -1,9 +1,9 @@
 <template>
   <div class="agreement-container">
     <div class="agreement-header">
-      <el-button link @click="$router.push('/register')" class="back-btn">
+      <button @click="$router.back()" class="ui-btn ui-btn-ghost back-btn">
         ← 返回
-      </el-button>
+      </button>
       <h2>烁学 - 隐私政策</h2>
     </div>
 

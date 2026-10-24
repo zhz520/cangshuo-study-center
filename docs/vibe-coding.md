@@ -1,6 +1,7 @@
 # 烁学 Vibe Coding 指南
 
 日期：2026-10-22  
+最近更新：2026-10-23，[2.0.0 题库安全通道与发布记录](question-transport.md)。正式版本 2.0.0 / 200，原证书签名 APK 为 `artifacts/android/app-release-2.0.0-20261023.apk`。保留[页面统一与功能修复记录](ui-completion-2026-10-23.md)中的答题卡分页、排行榜、今日统计与 Plus 个性化。
 适用仓库：`D:\codeStudy\code\study.zhzgo.cn_83FYC`  
 用途：给后续 AI 编码会话提供稳定的项目上下文、边界和验收标准。
 
@@ -68,12 +69,12 @@ archive/
 | 数据库 | MySQL `study_center`，普通题和试卷题已 AES-256-GCM 加密 |
 | 题目规模 | 普通题 133,444 道，试卷题 834 道 |
 | 搜索 | `question_search_tokens` 盲索引，约 16,995,888 token |
-| 自动化 | 本地后端 48、Web 3 通过；正式接口回归覆盖导出、第三方配置与 Web 页面 |
+| 自动化 | 后端 57、Web 7、Android JUnit 19 通过；正式两个域名各 22 项安全检查、16 项导出、62 项常规回归通过 |
 | 题库导出 | 管理员按账户生成 30 天随机密码；登录 + 密码 + 服务端会员/专业范围三重校验，CSV 带审计 |
 | 第三方服务 | 管理后台可配置极验与 OpenAI 兼容 AI 接口，支持三种模型角色和任意兼容服务地址 |
-| APK | 调试包 `artifacts/android/app-debug-1.1.2-20261022.apk`；签名快照 `app-release-1.1.2-20261022-2028.apk` |
+| APK | 原证书签名的 `artifacts/android/app-release-2.0.0-20261023.apk`，versionCode 200；升级接口已登记强制更新 |
 
-当前没有连接 Android 设备，未完成真机、TalkBack、不同 ROM 和签名正式发布验收。不要把调试包描述成正式线上版本。
+当前正式签名与发布已完成；没有连接 Android 设备，未完成覆盖安装、真机解密、TalkBack 与不同 ROM 验收。不要把构建通过等同于真机验收通过。安全通道不能回退成明文，不能在 Web 或 APK 中加入数据库密钥。
 
 ## 开工前读取顺序
 

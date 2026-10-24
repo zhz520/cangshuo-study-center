@@ -28,11 +28,11 @@ fun SecurityJwtScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("JWT 解析专家", fontWeight = FontWeight.Bold) },
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
+                title = { Text("JWT 解析专家") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)

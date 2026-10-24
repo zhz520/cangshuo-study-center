@@ -16,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import cn.zhzgo.study.ui.components.AppearanceSheet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -799,80 +801,8 @@ fun SettingsScreen(
         )
     }
 
-    if (showAppearanceDialog) {
-        val options = listOf("system" to "跟随系统", "light" to "浅色模式", "dark" to "深色模式")
-        AlertDialog(
-            onDismissRequest = { showAppearanceDialog = false },
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("外观", fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    options.forEach { (mode, label) ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.setAppearance(mode)
-                                    showAppearanceDialog = false
-                                }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(selected = currentAppearance == mode, onClick = null)
-                            Spacer(Modifier.width(12.dp))
-                            Text(label, fontSize = 16.sp)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showAppearanceDialog = false }) { Text("关闭", color = MaterialTheme.colorScheme.onSurface) }
-            }
-        )
-    }
-
-    if (showColorDialog) {
-        val colors = listOf(
-            "#000000" to "经典黑",
-            "#10B981" to "新翠绿",
-            "#3B82F6" to "天际蓝",
-            "#F59E0B" to "活泼橙",
-            "#8B5CF6" to "魅影紫"
-        )
-        AlertDialog(
-            onDismissRequest = { showColorDialog = false },
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("重点色", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    colors.forEach { (hex, name) ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.setPrimaryColorHex(hex)
-                                    showColorDialog = false
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(modifier = Modifier
-                                .size(32.dp)
-                                .background(Color(android.graphics.Color.parseColor(hex)), CircleShape))
-                            Spacer(Modifier.width(16.dp))
-                            Text(name, fontSize = 16.sp, fontWeight = if (currentPrimaryColor == hex) FontWeight.Bold else FontWeight.Normal)
-                            Spacer(Modifier.weight(1f))
-                            if (currentPrimaryColor == hex) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showColorDialog = false }) { Text("关闭", color = MaterialTheme.colorScheme.onSurface) }
-            }
-        )
-    }
+    if (showAppearanceDialog) AppearanceSheet("theme") { showAppearanceDialog = false }
+    if (showColorDialog) AppearanceSheet("accent") { showColorDialog = false }
 
     if (showRatingDialog) {
         var rating by remember { mutableIntStateOf(5) }
@@ -942,27 +872,27 @@ fun SettingsScreen(
         )
     }
 
-    cn.zhzgo.study.ui.components.StudyPage("设置",onBack) { padding ->
+    cn.zhzgo.study.ui.components.StudyPage("更多设置",onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(start=20.dp,end=20.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(24.dp)) {
             item {
                 SettingsSection("账户") {
-                    SettingsRow(Icons.Default.Person,"账号与安全",subtitle="个人资料、登录与绑定",onClick=onNavigateToAccountSettings)
-                    SettingsRow(Icons.Default.VerifiedUser,"会员状态",subtitle=if(isUserPlus(subscriptionEndDate)) "Plus · 到期 ${subscriptionEndDate.orEmpty().take(10)}" else "查看会员权益",onClick=onNavigateToSubscription)
+                    SettingsRow(Icons.Outlined.Person,"账号与安全",subtitle="个人资料、登录与绑定",onClick=onNavigateToAccountSettings)
+                    SettingsRow(Icons.Outlined.VerifiedUser,"会员状态",subtitle=if(isUserPlus(subscriptionEndDate)) "Plus · 到期 ${subscriptionEndDate.orEmpty().take(10)}" else "查看会员权益",onClick=onNavigateToSubscription)
                 }
             }
             item {
                 SettingsSection("外观") {
-                    SettingsRow(Icons.Default.DarkMode,"主题模式",subtitle=when(currentAppearance){"light"->"浅色";"dark"->"深色";else->"跟随系统"},onClick={showAppearanceDialog=true})
-                    SettingsRow(Icons.Default.Palette,"重点色",trailingContent={Box(Modifier.size(16.dp).background(MaterialTheme.colorScheme.primary,CircleShape))},onClick={showColorDialog=true})
+                    SettingsRow(Icons.Outlined.DarkMode,"主题模式",subtitle=when(currentAppearance){"light"->"浅色";"dark"->"深色";else->"跟随系统"},onClick={showAppearanceDialog=true})
+                    SettingsRow(Icons.Outlined.Palette,"重点色",trailingContent={Box(Modifier.size(16.dp).background(MaterialTheme.colorScheme.primary,CircleShape))},onClick={showColorDialog=true})
                 }
             }
             item {
                 SettingsSection("反馈与支持") {
-                    SettingsRow(Icons.Default.Feedback,"意见反馈",onClick={
+                    SettingsRow(Icons.Outlined.Feedback,"意见反馈",onClick={
                         try{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("mailto:14329140@qq.com")))}catch(e:Exception){Toast.makeText(context,"未找到邮件客户端",Toast.LENGTH_SHORT).show()}
                     })
-                    SettingsRow(Icons.Default.Star,"给应用评分",onClick={showRatingDialog=true})
-                    SettingsRow(Icons.Default.Share,"分享应用",onClick={
+                    SettingsRow(Icons.Outlined.Star,"给应用评分",onClick={showRatingDialog=true})
+                    SettingsRow(Icons.Outlined.Share,"分享应用",onClick={
                         val intent=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"烁学 · 专注每一次进步 https://study.zhzgo.cn/download")}
                         context.startActivity(Intent.createChooser(intent,"分享烁学"))
                     })
@@ -970,20 +900,20 @@ fun SettingsScreen(
             }
             item {
                 SettingsSection("应用") {
-                    SettingsRow(Icons.Default.SystemUpdate,"检查更新",subtitle="版本 $versionName",onClick={if(!isCheckingUpdate)updateViewModel.checkForUpdates(context,isAutoCheck=false)})
-                    SettingsRow(Icons.Default.History,"版本记录",onClick={viewModel.fetchVersionHistory();showVersionHistoryDialog=true})
-                    SettingsRow(Icons.Default.DeleteOutline,"清理缓存",trailingContent={Text(cacheSize,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)},onClick={showClearCacheDialog=true})
+                    SettingsRow(Icons.Outlined.SystemUpdate,"检查更新",subtitle="版本 $versionName",onClick={if(!isCheckingUpdate)updateViewModel.checkForUpdates(context,isAutoCheck=false)})
+                    SettingsRow(Icons.Outlined.History,"版本记录",onClick={viewModel.fetchVersionHistory();showVersionHistoryDialog=true})
+                    SettingsRow(Icons.Outlined.DeleteOutline,"清理缓存",trailingContent={Text(cacheSize,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)},onClick={showClearCacheDialog=true})
                 }
             }
             item {
                 SettingsSection("关于") {
-                    SettingsRow(Icons.Default.Info,"关于烁学",onClick={showAboutDialog=true})
-                    SettingsRow(Icons.Default.ReceiptLong,"开源许可",onClick={showLicensesDialog=true})
-                    SettingsRow(Icons.Default.Description,"第三方信息共享清单",onClick={showThirdPartyDialog=true})
-                    SettingsRow(Icons.Default.Language,"官方网站",onClick={onNavigateToWebView("https://study.zhzgo.cn/","官方网站")})
-                    SettingsRow(Icons.Default.Download,"应用下载",onClick={onNavigateToWebView("https://study.zhzgo.cn/download","应用下载")})
-                    SettingsRow(Icons.Default.Description,"用户服务协议",onClick={onNavigateToWebView("https://study.zhzgo.cn/agreement","用户服务协议")})
-                    SettingsRow(Icons.Default.Security,"隐私政策",onClick={onNavigateToWebView("https://study.zhzgo.cn/privacy","隐私政策")})
+                    SettingsRow(Icons.Outlined.Info,"关于烁学",onClick={showAboutDialog=true})
+                    SettingsRow(Icons.Outlined.ReceiptLong,"开源许可",onClick={showLicensesDialog=true})
+                    SettingsRow(Icons.Outlined.Description,"第三方信息共享清单",onClick={showThirdPartyDialog=true})
+                    SettingsRow(Icons.Outlined.Language,"官方网站",onClick={onNavigateToWebView("https://study.zhzgo.cn/","官方网站")})
+                    SettingsRow(Icons.Outlined.Download,"应用下载",onClick={onNavigateToWebView("https://study.zhzgo.cn/download","应用下载")})
+                    SettingsRow(Icons.Outlined.Description,"用户服务协议",onClick={onNavigateToWebView("https://study.zhzgo.cn/agreement","用户服务协议")})
+                    SettingsRow(Icons.Outlined.Security,"隐私政策",onClick={onNavigateToWebView("https://study.zhzgo.cn/privacy","隐私政策")})
                 }
             }
             item {TextButton(onClick={showLogoutDialog=true},modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)){Text("退出登录",color=MaterialTheme.colorScheme.error)}}
@@ -997,12 +927,12 @@ fun SettingsScreen(
 @Composable
 fun SettingsSection(title:String,content:@Composable ColumnScope.()->Unit) {
     Column {
-        Text(title,style=MaterialTheme.typography.titleLarge,modifier=Modifier.padding(bottom=8.dp))
+        Text(title,style=MaterialTheme.typography.titleSmall,modifier=Modifier.padding(bottom=8.dp))
         content()
     }
 }
 @Composable
-fun SettingsRow(icon:ImageVector,label:String,subtitle:String?=null,iconTint:Color=MaterialTheme.colorScheme.onSurfaceVariant,
+fun SettingsRow(icon:ImageVector,label:String,subtitle:String?=null,iconTint:Color=MaterialTheme.colorScheme.onSurface,
     trailingContent:@Composable (()->Unit)?=null,onClick:()->Unit) {
     Column {
         Row(Modifier.fillMaxWidth().clickable(onClick=onClick).heightIn(min=56.dp).padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -1012,7 +942,7 @@ fun SettingsRow(icon:ImageVector,label:String,subtitle:String?=null,iconTint:Col
                 if(subtitle!=null)Text(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if(trailingContent!=null)Box(Modifier.widthIn(max=140.dp)){trailingContent()}
-            Icon(Icons.Default.ChevronRight,null,Modifier.size(16.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Outlined.ChevronRight,null,Modifier.size(16.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
         }
         HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
     }

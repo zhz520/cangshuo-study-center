@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { admin, publicApi } from '../../api';
 import DashboardCharts from './components/DashboardCharts.vue';
+import { getTheme } from '../../utils/theme';
 
 const stats = ref({
   users: 0,
@@ -10,36 +11,22 @@ const stats = ref({
 });
 const dailyQuote = ref(null);
 const loading = ref(true);
-const isDark = ref(false);
+const isDark = ref(getTheme() === 'dark');
 const username = ref('Admin');
 
 // Time-based greeting in English
 const greeting = computed(() => {
   const hour = new Date().getHours();
-  if (hour < 5) return 'Good night';
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 5) return '夜深了';
+  if (hour < 12) return '早上好';
+  if (hour < 18) return '下午好';
+  return '晚上好';
 });
 
-const toggleTheme = () => {
-  isDark.value = !isDark.value;
-  if (isDark.value) {
-    document.documentElement.classList.add('dark');
-    localStorage.setItem('theme', 'dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-    localStorage.setItem('theme', 'light');
-  }
-};
+const syncChartTheme = (event) => { isDark.value = event.detail === 'dark'; };
 
 onMounted(async () => {
-  // Init theme
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    isDark.value = true;
-    document.documentElement.classList.add('dark');
-  }
+  window.addEventListener('study-theme-change', syncChartTheme);
 
   // Get username
   const userStr = localStorage.getItem('user');
@@ -94,6 +81,7 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+onUnmounted(() => window.removeEventListener('study-theme-change', syncChartTheme));
 </script>
 
 <template>
@@ -107,9 +95,6 @@ onMounted(async () => {
           {{ username === 'admintest' ? '演示模式 · 仅可浏览' : '管理员权限已激活' }}
         </p>
       </div>
-      <button class="ui-btn ui-btn-outline ui-btn-sm" @click="toggleTheme">
-        {{ isDark ? '浅色模式' : '深色模式' }}
-      </button>
     </div>
 
     <div class="dash-metrics">
@@ -179,9 +164,9 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.dash { max-width: 1080px; }
+.dash { width: 100%; }
 .dash-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 26px; }
-.dash-title { margin-top: 6px; font-size: clamp(22px, 3vw, 28px); line-height: 1.25; font-weight: 700; letter-spacing: -.03em; }
+.dash-title { margin-top: 6px; font-size: 24px; line-height: 1.3; font-weight: 650; letter-spacing: -.025em; }
 .dash-status { display: flex; align-items: center; gap: 6px; margin-top: 7px; font-size: 11px; color: var(--text-sub); }
 .dash-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
 .dash-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--border); overflow: hidden; }

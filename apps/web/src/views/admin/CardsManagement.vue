@@ -1,4 +1,5 @@
 <script setup>
+import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
 import { ref, onMounted, computed } from 'vue';
 import { admin } from '../../api';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
@@ -96,76 +97,68 @@ const setFilter = (status) => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-      <div>
-        <h1 class="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">💳 订阅卡密管理</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">批量生成激活码，供用户兑换VIP时长及完整题库访问权</p>
+  <div class="admin-workspace ui-page admin-stack">
+    <div class="admin-page-bar">
+      <AdminPageHeading title="订阅卡密" description="批量生成兑换码，管理 Plus 会员时长。" />
+      <div class="admin-page-actions">
+        <button class="ui-btn ui-btn-primary admin-control" type="button" @click="openCreateModal">批量生成</button>
       </div>
-      <button @click="openCreateModal" class="px-6 py-3 bg-indigo-500 text-white rounded-2xl font-bold text-sm hover:bg-indigo-600 transition-all active:scale-95 shadow-lg shadow-indigo-500/20 flex items-center gap-2">
-        <span class="text-lg">+</span> 批量生成卡密
-      </button>
     </div>
 
-    <!-- Filters -->
-    <div class="flex gap-2">
-        <button @click="setFilter(null)" class="px-4 py-2 text-xs font-bold rounded-lg transition-colors" :class="filterStatus === null ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'">全部</button>
-        <button @click="setFilter('unused')" class="px-4 py-2 text-xs font-bold rounded-lg transition-colors" :class="filterStatus === 'unused' ? 'bg-green-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'">未使用</button>
-        <button @click="setFilter('used')" class="px-4 py-2 text-xs font-bold rounded-lg transition-colors" :class="filterStatus === 'used' ? 'bg-amber-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'">已使用</button>
+    <div class="admin-tabs">
+      <button class="admin-tab" :class="{ 'is-active': filterStatus === null }" type="button" @click="setFilter(null)">全部</button>
+      <button class="admin-tab" :class="{ 'is-active': filterStatus === 'unused' }" type="button" @click="setFilter('unused')">未使用</button>
+      <button class="admin-tab" :class="{ 'is-active': filterStatus === 'used' }" type="button" @click="setFilter('used')">已使用</button>
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="flex justify-center py-20">
-      <div class="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent"></div>
+    <div v-if="loading" class="admin-table-card">
+      <div class="admin-empty"><span class="ui-spinner"></span><span class="admin-empty-title">正在加载卡密</span></div>
     </div>
 
     <!-- Table -->
-    <div v-else class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden">
+    <div v-else class="admin-table-card">
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm admin-data-table">
           <thead>
-            <tr class="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
-              <th class="text-left px-6 py-4 font-bold text-slate-500 dark:text-slate-400 text-xs uppercase">卡密 CODE</th>
-              <th class="text-left px-4 py-4 font-bold text-slate-500 dark:text-slate-400 text-xs uppercase">面额 (天)</th>
-              <th class="text-left px-4 py-4 font-bold text-slate-500 dark:text-slate-400 text-xs uppercase">状态</th>
-              <th class="text-left px-4 py-4 font-bold text-slate-500 dark:text-slate-400 text-xs uppercase">使用者</th>
-              <th class="text-left px-4 py-4 font-bold text-slate-500 dark:text-slate-400 text-xs uppercase">生成/使用时间</th>
-              <th class="text-right px-6 py-4 font-bold text-slate-500 dark:text-slate-400 text-xs uppercase">操作</th>
+            <tr>
+              <th class="text-left">兑换码</th>
+              <th class="text-left">时长</th>
+              <th class="text-left">状态</th>
+              <th class="text-left">使用者</th>
+              <th class="text-left">生成 / 使用时间</th>
+              <th class="text-right">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="cards.length === 0">
-              <td colspan="6" class="text-center py-16 text-slate-400">
-                <p class="text-4xl mb-3">📭</p>
-                <p>暂无卡密，点击上方生成按钮添加</p>
-              </td>
+              <td colspan="6"><div class="admin-empty admin-table-empty"><span class="admin-empty-title">暂无卡密</span><span class="admin-empty-copy">生成后可在列表中复制和核销。</span></div></td>
             </tr>
             <tr
               v-for="card in cards"
               :key="card.id"
               class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors"
             >
-              <td class="px-6 py-4 font-mono font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+              <td class="font-mono font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
                 {{ card.code }}
-                <button @click="copyToClipboard(card.code)" title="复制" class="text-slate-400 hover:text-indigo-500 transition-colors">📄</button>
+                <button @click="copyToClipboard(card.code)" title="复制" class="text-[10px] text-slate-400 hover:text-indigo-500 transition-colors admin-control">复制</button>
               </td>
-              <td class="px-4 py-4 font-bold text-slate-700 dark:text-slate-300">{{ card.duration_days }} 天</td>
-              <td class="px-4 py-4">
-                <span class="px-3 py-1 text-xs font-bold rounded-full" :class="card.is_used ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' : 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'">
+              <td class="px-4 font-bold text-slate-700 dark:text-slate-300">{{ card.duration_days }} 天</td>
+              <td class="px-4">
+                <span class="admin-role" :class="{ 'is-demo': card.is_used }">
                     {{ card.is_used ? '已使用' : '未使用' }}
                 </span>
               </td>
-              <td class="px-4 py-4 text-slate-600 dark:text-slate-300">
+              <td class="px-4 text-slate-600 dark:text-slate-300">
                 <span v-if="card.is_used" class="font-medium bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md text-xs">ID: {{ card.used_by }} ({{ card.used_by_name || '已删号'}})</span>
                 <span v-else class="text-slate-300 dark:text-slate-600">-</span>
               </td>
-              <td class="px-4 py-4 text-xs text-slate-500 dark:text-slate-400">
+              <td class="px-4 text-xs text-slate-500 dark:text-slate-400">
                 <div>生成: {{ new Date(card.created_at).toLocaleString() }}</div>
                 <div v-if="card.is_used" class="text-amber-600 dark:text-amber-400 mt-1">核销: {{ new Date(card.used_at).toLocaleString() }}</div>
               </td>
-              <td class="px-6 py-4 text-right">
-                <button @click="deleteCard(card)" class="px-3 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors">删除</button>
+              <td class="text-right">
+                <button @click="deleteCard(card)" class="admin-text-action danger">删除</button>
               </td>
             </tr>
           </tbody>
@@ -178,13 +171,13 @@ const setFilter = (status) => {
           共 <span class="font-bold text-slate-800 dark:text-slate-200">{{ pagination.total }}</span> 条记录
         </div>
         <div class="flex items-center gap-2">
-          <button @click="handlePageChange(pagination.page - 1)" :disabled="pagination.page === 1" class="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors">◀</button>
+          <button @click="handlePageChange(pagination.page - 1)" :disabled="pagination.page === 1" class="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors admin-control">◀</button>
           <div class="flex items-center gap-1">
             <template v-for="p in pagination.totalPages" :key="p">
               <button
                 v-if="p === 1 || p === pagination.totalPages || (p >= pagination.page - 1 && p <= pagination.page + 1)"
                 @click="handlePageChange(p)"
-                class="w-8 h-8 rounded-xl font-bold text-sm flex items-center justify-center transition-colors"
+                class="w-8 h-8 rounded-xl font-bold text-sm flex items-center justify-center transition-colors admin-control"
                 :class="pagination.page === p ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'"
               >
                 {{ p }}
@@ -192,7 +185,7 @@ const setFilter = (status) => {
               <span v-else-if="p === pagination.page - 2 || p === pagination.page + 2" class="text-slate-400">...</span>
             </template>
           </div>
-          <button @click="handlePageChange(pagination.page + 1)" :disabled="pagination.page === pagination.totalPages" class="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors">▶</button>
+          <button @click="handlePageChange(pagination.page + 1)" :disabled="pagination.page === pagination.totalPages" class="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors admin-control">▶</button>
         </div>
       </div>
     </div>
@@ -200,24 +193,24 @@ const setFilter = (status) => {
     <!-- Create Modal -->
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showModal = false"></div>
-        <div class="relative bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="absolute inset-0 bg-slate-900/50" @click="showModal = false"></div>
+        <div class="relative bg-white dark:bg-slate-800 rounded-xl w-full max-w-sm overflow-hidden">
           <div class="p-6">
-            <h2 class="text-xl font-black text-slate-800 dark:text-slate-100 mb-6">生成激活卡密</h2>
+            <h2 class="text-xl text-slate-800 dark:text-slate-100 mb-6">生成激活卡密</h2>
             <div class="space-y-4">
               <div>
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">生成数量 (张)</label>
-                <input v-model.number="form.count" type="number" min="1" max="1000" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                <input v-model.number="form.count" type="number" min="1" max="1000" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ui-input" />
               </div>
               <div>
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">订阅时长 (天/面额)</label>
-                <input v-model.number="form.duration_days" type="number" min="1" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                <input v-model.number="form.duration_days" type="number" min="1" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ui-input" />
               </div>
             </div>
           </div>
           <div class="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700/50 flex gap-3">
-            <button @click="showModal = false" class="flex-1 py-3 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors border border-slate-200 dark:border-slate-700">取消</button>
-            <button @click="generateCards" class="flex-1 py-3 bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">确认生成</button>
+            <button @click="showModal = false" class="flex-1 py-3 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors border border-slate-200 dark:border-slate-700 admin-control">取消</button>
+            <button @click="generateCards" class="flex-1 py-3 bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all admin-control">确认生成</button>
           </div>
         </div>
       </div>

@@ -43,6 +43,7 @@ data class QuestionUiState(
     val totalCount: Int? = null,
     val pageOffset: Int = 0,
     val immediateFeedback: Boolean = true,
+    val questionTextSize: Int = 18,
     val pendingSubmissionIds: Set<Int> = emptySet(),
     val maxScore: Int = 0
 )
@@ -53,6 +54,8 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
     }
 
     private val apiService = RetrofitClient.create(application)
+    private val serverCorrect = mutableMapOf<Int, Boolean>()
+    private val pendingReviews = mutableSetOf<Int>()
 
     private val _uiState = MutableStateFlow(QuestionUiState())
     val uiState = _uiState.asStateFlow()
@@ -154,6 +157,11 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
         initialLoad = viewModelScope.launch {
             try {
                 val memory = studyPreferences.memory.first()
+                val profile = async {
+                    try { apiService.getUserProfile("me").user }
+                    catch(e:CancellationException) { throw e }
+                    catch(_:Exception) { null }
+                }
                 val session = memory.session?.takeIf { !isFavorites && !isMistakes && subjectId > 0 && it.subjectId == subjectId }
                 firstPage = if (session != null) cn.zhzgo.study.data.PracticeWorkflow.pageForIndex(session.index, PAGE_SIZE) else 1
                 currentPage = firstPage
@@ -177,7 +185,10 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
                     result = fetchQuestionPage(1, questionId)
                 }
                 val progressList = progressDeferred.await()
+                serverCorrect.clear()
+                progressList.forEach { serverCorrect[it.question_id] = it.is_correct == 1 }
                 val totalCount = totalDeferred.await()
+                val member = profile.await().let { it?.role=="admin" || cn.zhzgo.study.ui.components.isUserPlus(it?.subscription_end_date) }
 
                 val parsedMap = buildParsedOptionsMap(result)
 
@@ -220,6 +231,8 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
 
                 _uiState.update { currentState ->
                     currentState.copy(
+                        immediateFeedback = if(member) memory.immediateFeedback else true,
+                        questionTextSize = if(member) memory.questionTextSize.coerceIn(16,22) else 18,
                         questions = result,
                         totalCount = if(currentState.previewOnly) totalCount?.coerceAtMost(20) else totalCount,
                         pageOffset = (firstPage - 1) * PAGE_SIZE,
@@ -234,6 +247,7 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
                     )
                 }
 
+                restoreCurrentReview()
                 if (_uiState.value.favoriteQuestionIds.isEmpty()) loadFavorites()
             } catch (e: CancellationException) { throw e }
               catch (e: Exception) {
@@ -244,12 +258,15 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
 
     // Returning from membership keeps the question, drafts and timer; authorization stays server-side.
     fun refreshAccess() {
-        if (!_uiState.value.previewOnly || _uiState.value.isInitialLoading || accessRefresh?.isActive == true) return
+        if (_uiState.value.isInitialLoading || accessRefresh?.isActive == true) return
         accessRefresh = viewModelScope.launch {
             try {
                 val user = apiService.getUserProfile("me").user
                 val active = user.role == "admin" || cn.zhzgo.study.ui.components.isUserPlus(user.subscription_end_date)
-                if (active && currentSubjectId > 0 && !isMistakesMode && !isFavoritesMode) {
+                val memory = studyPreferences.memory.first()
+                _uiState.update { it.copy(immediateFeedback=if(active)memory.immediateFeedback else true,
+                    questionTextSize=if(active)memory.questionTextSize.coerceIn(16,22) else 18) }
+                if (active && _uiState.value.previewOnly && currentSubjectId > 0 && !isMistakesMode && !isFavoritesMode) {
                     // Preview pages contain 20 items. Fetch the rest of this same 50-item page
                     // before page 2, otherwise upgrading skips questions 21 through 50.
                     val response = apiService.getQuestionPage(currentSubjectId, firstPage, PAGE_SIZE)
@@ -304,7 +321,7 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun selectSingleOption(questionId: Int, option: String) {
-        if (isSubmitted(questionId)) return
+        if (isSubmitted(questionId) || questionId in _uiState.value.pendingSubmissionIds) return
         _uiState.update { it.copy(userAnswers = it.userAnswers + (questionId to option)) }
         val question = _uiState.value.questions.find { it.id == questionId }
         saveDraft(questionId)
@@ -312,7 +329,7 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun selectJudgeOption(questionId: Int, option: String) {
-        if (isSubmitted(questionId)) return
+        if (isSubmitted(questionId) || questionId in _uiState.value.pendingSubmissionIds) return
         _uiState.update { it.copy(userAnswers = it.userAnswers + (questionId to option)) }
         val question = _uiState.value.questions.find { it.id == questionId }
         saveDraft(questionId)
@@ -402,67 +419,28 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun calculateCurrentScore(questions: List<Question>, userAnswers: Map<Int, Any>, submittedQuestions: Set<Int>): Int {
-        var score = 0
-        questions.forEach { q ->
-            if (submittedQuestions.contains(q.id)) {
-                val userAnswerRaw = userAnswers[q.id]
-                val userAnswerStr = formatUserAnswer(userAnswerRaw)
-
-                var normalizedUser = userAnswerStr
-                if (q.type != "fill" && q.type != "text" && q.type != "sort") {
-                    normalizedUser = normalizedUser.replace(Regex("[^A-Za-z]"), "").uppercase().toCharArray().sorted().joinToString("")
-                }
-                val normalizedCorrect = normalizeAnswer(q.type, q.answer)
-                if (normalizedUser.equals(normalizedCorrect, ignoreCase = true)) {
-                    score += when (q.type) {
-                        "single" -> 3
-                        "multiple" -> 4
-                        "judge" -> 2
-                        else -> 0
-                    }
-                }
-            }
+    private fun calculateCurrentScore(questions: List<Question>, userAnswers: Map<Int, Any>, submittedQuestions: Set<Int>): Int =
+        questions.filter { it.id in submittedQuestions && serverCorrect[it.id] == true }.sumOf {
+            when (it.type) { "single" -> 3; "multiple" -> 4; "judge" -> 2; else -> 0 }
         }
-        return score
-    }
 
-    fun getCorrectCount(): Int {
-        var count = 0
-        _uiState.value.questions.forEach { q ->
-            if (isSubmitted(q.id)) {
-                val userAnswerRaw = _uiState.value.userAnswers[q.id]
-                val userAnswerStr = formatUserAnswer(userAnswerRaw)
-                var normalizedUser = userAnswerStr
-                if (q.type != "fill" && q.type != "text" && q.type != "sort") {
-                    normalizedUser = normalizedUser.replace(Regex("[^A-Za-z]"), "").uppercase().toCharArray().sorted().joinToString("")
-                }
-                val normalizedCorrect = normalizeAnswer(q.type, q.answer)
-                if (normalizedUser.equals(normalizedCorrect, ignoreCase = true)) {
-                    count++
-                }
-            }
-        }
-        return count
-    }
+    fun getCorrectCount(): Int = _uiState.value.questions.count { isSubmitted(it.id) && serverCorrect[it.id] == true }
+    fun getIncorrectCount(): Int = _uiState.value.questions.count { isSubmitted(it.id) && serverCorrect[it.id] == false }
 
-    fun getIncorrectCount(): Int {
-        var count = 0
-        _uiState.value.questions.forEach { q ->
-            if (isSubmitted(q.id)) {
-                val userAnswerRaw = _uiState.value.userAnswers[q.id]
-                val userAnswerStr = formatUserAnswer(userAnswerRaw)
-                var normalizedUser = userAnswerStr
-                if (q.type != "fill" && q.type != "text" && q.type != "sort") {
-                    normalizedUser = normalizedUser.replace(Regex("[^A-Za-z]"), "").uppercase().toCharArray().sorted().joinToString("")
-                }
-                val normalizedCorrect = normalizeAnswer(q.type, q.answer)
-                if (!normalizedUser.equals(normalizedCorrect, ignoreCase = true)) {
-                    count++
-                }
-            }
+    private fun restoreCurrentReview() {
+        val state = _uiState.value
+        val question = state.questions.getOrNull(state.currentIndex) ?: return
+        if (question.id !in state.submittedQuestions || question.answer != null || !pendingReviews.add(question.id)) return
+        viewModelScope.launch {
+            try {
+                val review = apiService.getQuestionReview(question.id, question.answer_token).copy(answer_token = question.answer_token)
+                originalQuestions = originalQuestions.map { if (it.id == review.id) review else it }
+                _uiState.update { current -> current.copy(questions = current.questions.map { if (it.id == review.id) review else it },
+                    parsedOptionsMap = current.parsedOptionsMap + buildParsedOptionsMap(listOf(review))) }
+            } catch (e: CancellationException) { throw e }
+              catch (e: Exception) { _uiState.update { it.copy(errorMessage = requestError(e)) } }
+            finally { pendingReviews.remove(question.id) }
         }
-        return count
     }
 
     private fun submitQuestion(question: Question) {
@@ -471,44 +449,33 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
         val userAnswerRaw = _uiState.value.userAnswers[question.id]
         val userAnswerStr = formatUserAnswer(userAnswerRaw)
 
-        var normalizedUser = userAnswerStr
-        if (question.type != "fill" && question.type != "text" && question.type != "sort") {
-            normalizedUser = normalizedUser.replace(Regex("[^A-Za-z]"), "").uppercase().toCharArray().sorted().joinToString("")
-        }
-        val normalizedCorrect = normalizeAnswer(question.type, question.answer)
-        val isCorrect = normalizedUser.equals(normalizedCorrect, ignoreCase = true)
-
-        _uiState.update { it.copy(
-            errorMessage = null,
-            pendingSubmissionIds = if(isMistakesMode) it.pendingSubmissionIds else it.pendingSubmissionIds + question.id,
-            submittedQuestions = it.submittedQuestions + question.id,
-            currentScore = if (isCorrect) it.currentScore + when(question.type) {
-                "single" -> 3
-                "multiple" -> 4
-                "judge" -> 2
-                else -> 0
-            } else it.currentScore
-        ) }
-
-        // In mistakes mode, don't sync to server - keep original first-attempt record intact
-        // This preserves leaderboard integrity
-        if(isMistakesMode) viewModelScope.launch {runCatching { studyPreferences.recordOutcomes(mapOf("bank:${question.id}" to isCorrect)) }}
-        if (!isMistakesMode) {
-            viewModelScope.launch {
-                try {
-                    val request = cn.zhzgo.study.data.ProgressRequest(question.id, isCorrect, userAnswerStr)
-                    apiService.syncProgress(request)
-                    studyPreferences.removeDraft(question.id)
-                    runCatching { studyPreferences.recordOutcomes(mapOf("bank:${question.id}" to isCorrect)) }
-                } catch (e: Exception) {
-                    _uiState.update { current ->
-                        val submitted = current.submittedQuestions - question.id
-                        current.copy(submittedQuestions = submitted,
-                            currentScore = calculateCurrentScore(current.questions, current.userAnswers, submitted),
-                            errorMessage = requestError(e))
+        if (userAnswerStr.isBlank()) return
+        _uiState.update { it.copy(errorMessage = null, pendingSubmissionIds = it.pendingSubmissionIds + question.id) }
+        viewModelScope.launch {
+            try {
+                val request = cn.zhzgo.study.data.ProgressRequest(question.id, false, userAnswerStr, question.answer_token, isMistakesMode)
+                val grade = apiService.syncProgress(request)
+                serverCorrect[question.id] = grade.is_correct
+                val revealed = grade.question.copy(answer_token = question.answer_token)
+                originalQuestions = originalQuestions.map { if (it.id == revealed.id) revealed else it }
+                _uiState.update { current ->
+                    val all = current.questions.map { if (it.id == revealed.id) revealed else it }
+                    val submitted = current.submittedQuestions + question.id
+                    current.copy(questions = all, submittedQuestions = submitted,
+                        parsedOptionsMap = current.parsedOptionsMap + buildParsedOptionsMap(listOf(revealed)),
+                        currentScore = calculateCurrentScore(all, current.userAnswers, submitted))
+                }
+                studyPreferences.removeDraft(question.id)
+                runCatching { studyPreferences.recordOutcomes(mapOf("bank:${question.id}" to grade.is_correct)) }
+            } catch (e: CancellationException) { throw e }
+              catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = requestError(e)) }
+                if (e is retrofit2.HttpException && e.code() == 403) {
+                    runCatching { apiService.getQuestion(question.id) }.getOrNull()?.let { fresh ->
+                        _uiState.update { current -> current.copy(questions = current.questions.map { if (it.id == fresh.id) fresh else it }) }
                     }
-                } finally { _uiState.update { it.copy(pendingSubmissionIds = it.pendingSubmissionIds - question.id) } }
-            }
+                }
+            } finally { _uiState.update { it.copy(pendingSubmissionIds = it.pendingSubmissionIds - question.id) } }
         }
     }
 
@@ -557,6 +524,7 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
 
     fun markMastered(id: Int) { viewModelScope.launch { studyPreferences.mark(setOf(id), true) } }
     fun loadNextPage() = loadPage(false)
+    fun loadPreviousPage() = loadPage(true)
     private fun loadPage(prepend: Boolean, advance: Boolean = false) {
         val state = _uiState.value
         if(state.isLoadingMore || state.isInitialLoading || (prepend && firstPage <= 1) || (!prepend && state.isLastPage)) return
@@ -568,6 +536,7 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
                 val added = result.filter { q -> _uiState.value.questions.none { it.id == q.id } }
                 val parsed = buildParsedOptionsMap(added)
                 val progress = if(isMistakesMode) emptyList() else apiService.getProgress()
+                progress.forEach { serverCorrect[it.question_id] = it.is_correct == 1 }
                 val memory = studyPreferences.memory.first()
                 originalQuestions = if(prepend) added+originalQuestions else originalQuestions+added
                 _uiState.update { current ->
@@ -592,6 +561,7 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
                         isLastPage=if(prepend)current.isLastPage else result.size<PAGE_SIZE,aiExplanation=null)
                 }
                 if(prepend)firstPage=page else currentPage=page
+                restoreCurrentReview()
             } catch(e:CancellationException) { throw e }
               catch(e:Exception) { _uiState.update { it.copy(errorMessage=requestError(e)) } }
             finally { _uiState.update { it.copy(isLoadingMore=false) } }
@@ -603,17 +573,20 @@ class QuestionViewModel(application: Application) : AndroidViewModel(application
         if(state.pendingSubmissionIds.isNotEmpty()) return
         if(state.currentIndex < state.questions.lastIndex) _uiState.update { it.copy(currentIndex=it.currentIndex+1,aiExplanation=null) }
         else loadPage(false, true)
+        restoreCurrentReview()
     }
     fun prevQuestion() {
         aiJob?.cancel()
         if(_uiState.value.pendingSubmissionIds.isNotEmpty()) return
         if(_uiState.value.currentIndex>0) _uiState.update { it.copy(currentIndex=it.currentIndex-1,aiExplanation=null) }
         else loadPage(true,true)
+        restoreCurrentReview()
     }
     fun jumpToQuestion(index:Int) {
         aiJob?.cancel()
         if(_uiState.value.pendingSubmissionIds.isEmpty() && index in _uiState.value.questions.indices)
             _uiState.update { it.copy(currentIndex=index,aiExplanation=null) }
+        restoreCurrentReview()
     }
 
     fun requestAiExplanation(question: Question) {

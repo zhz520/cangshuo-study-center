@@ -30,6 +30,12 @@ function canonical(value, type) {
 
 function scoreAnswer(question, answer) {
     if (answer == null || answer === '' || (Array.isArray(answer) && !answer.length)) return false;
+    if (question.type === 'material') {
+        const items = unpack(question.options);
+        const given = unpack(answer);
+        return Array.isArray(items) && items.length > 0 && given && typeof given === 'object' &&
+            items.every((item, index) => scoreAnswer(item, given[index]));
+    }
     const expected = canonical(question.answer, question.type);
     return expected !== '' && expected === canonical(answer, question.type);
 }

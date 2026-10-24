@@ -17,6 +17,7 @@ router.get('/auth-config', async (req, res) => {
 });
 
 router.get('/home-data', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
     try {
         const connection = await pool.getConnection();
         const data = {};

@@ -1,4 +1,5 @@
 <script setup>
+import BrandLogo from '../components/BrandLogo.vue';
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axios from "axios";
@@ -65,7 +66,7 @@ const copyLink = () => {
     <header class="article-topbar">
       <div class="article-topbar-inner">
         <button class="web-brand" @click="router.push('/')">
-          <span class="web-brand-mark">烁</span>
+          <BrandLogo />
           <span>烁学</span>
         </button>
         <div class="web-actions">
@@ -120,7 +121,7 @@ const copyLink = () => {
             <strong>烁学 App</strong>
             <p>题库练习、AI 解析与学习记录同步。</p>
           </div>
-          <router-link to="/download" class="ui-btn ui-btn-dark">下载 App</router-link>
+          <router-link to="/download" class="ui-btn ui-btn-primary">下载 App</router-link>
         </div>
       </article>
     </main>

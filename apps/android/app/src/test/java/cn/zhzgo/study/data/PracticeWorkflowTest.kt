@@ -2,6 +2,14 @@ package cn.zhzgo.study.data
 import org.junit.Assert.*
 import org.junit.Test
 class PracticeWorkflowTest {
+    @Test fun answerSheetHasDisjointPagesAndHandlesPartialLastPage() {
+        assertEquals(3,PracticeWorkflow.sheetPageCount(121))
+        assertEquals((0..49).toList(),PracticeWorkflow.sheetIndices(121,0))
+        assertEquals((50..99).toList(),PracticeWorkflow.sheetIndices(121,1))
+        assertEquals((100..120).toList(),PracticeWorkflow.sheetIndices(121,2))
+        assertEquals((0..19).toList(),PracticeWorkflow.sheetIndices(20,0))
+        assertEquals(emptyList<Int>(),PracticeWorkflow.sheetIndices(0,0))
+    }
     @Test fun resumesAtBothSidesOfEveryPageBoundary() {
         for(page in 0..100) {
             assertEquals(page+1,PracticeWorkflow.pageForIndex(page*50))

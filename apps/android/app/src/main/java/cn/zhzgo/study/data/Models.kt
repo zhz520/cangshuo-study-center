@@ -3,6 +3,10 @@ package cn.zhzgo.study.data
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 @Immutable
+data class MemberAppearance(val is_plus: Boolean = false, val avatar_frame: String = "none", val badge_visible: Boolean = false)
+@Immutable
+data class MemberAppearanceRequest(val avatar_frame: String, val badge_visible: Boolean)
+@Immutable
 data class LoginRequest(
     val username: String,
     val password: String,
@@ -151,7 +155,8 @@ data class Question(
     val analysis: String?,
     val difficulty: Int?,
     val tags: Any?,
-    val category: String?
+    val category: String?,
+    val answer_token: String? = null
 )
 
 @Immutable
@@ -209,7 +214,8 @@ data class LeaderboardUser(
     val nickname: String?,
     val avatar_icon: String?,
     val score: Int,
-    val subscription_end_date: String? = null
+    val subscription_end_date: String? = null,
+    val appearance: MemberAppearance? = null
 )
 
 @Immutable
@@ -221,8 +227,13 @@ data class RecommendationResponse(
 data class ProgressRequest(
     val question_id: Int,
     val is_correct: Boolean,
-    val answer: String
+    val answer: String,
+    val answer_token: String? = null,
+    val review_only: Boolean = false
 )
+
+@Immutable
+data class ProgressGradeResponse(val is_correct: Boolean, val question: Question)
 
 @Immutable
 data class ProgressResponse(
@@ -261,8 +272,12 @@ data class DetailedStatsResponse(
     val subjectStats: List<SubjectStat>,
     val typeStats: List<TypeStat>,
     val weekHeatmap: List<WeekDay>,
-    val streak: Int
+    val streak: Int,
+    val today: TodayStudy? = null
 )
+
+@Immutable
+data class TodayStudy(val day: String = "", val total: Int = 0, val correct: Int = 0, val accuracy: Int = 0)
 
 @Immutable
 data class Article(
@@ -353,7 +368,8 @@ data class UserProfileData(
     val join_date: String? = null,
     val email: String? = null,
     val qq_openid: String? = null,
-    val subscription_end_date: String? = null
+    val subscription_end_date: String? = null,
+    val appearance: MemberAppearance? = null
 )
 
 @Immutable

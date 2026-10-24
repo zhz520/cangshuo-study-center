@@ -5,17 +5,12 @@ import AppLayout from './views/layouts/AppLayout.vue';
 
 const route = useRoute();
 const isDemo = ref(false);
-const applyTheme = () => {
-  const saved = localStorage.getItem('theme');
-  const dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.classList.toggle('dark', dark);
-};
 const syncUser = () => {
   try { isDemo.value = JSON.parse(localStorage.getItem('user') || '{}')?.role === 'demo'; }
   catch { isDemo.value = false; }
 };
 
-onMounted(() => { applyTheme(); syncUser(); });
+onMounted(syncUser);
 watch(() => route.fullPath, syncUser);
 </script>
 

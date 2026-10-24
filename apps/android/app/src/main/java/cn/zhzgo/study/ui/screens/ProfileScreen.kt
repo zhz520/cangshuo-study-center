@@ -23,10 +23,14 @@ import androidx.compose.ui.unit.dp
 import cn.zhzgo.study.data.UserPreferences
 import cn.zhzgo.study.ui.components.*
 import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.saveable.rememberSaveable
+import cn.zhzgo.study.data.MemberAppearance
+import cn.zhzgo.study.network.RetrofitClient
 
 @Composable
 fun ProfileScreen(onSettings: () -> Unit, onAccount: () -> Unit, onSubscription: () -> Unit,
-    onAdmin: () -> Unit, onScore: () -> Unit, onPublicProfile: () -> Unit = {}, onSettingsAction: (String) -> Unit = { onSettings() }) {
+    onAdmin: () -> Unit, onScore: () -> Unit, onPublicProfile: () -> Unit = {}, onSettingsAction: (String) -> Unit = { onSettings() },onPersonalize:()->Unit={}) {
     val context = LocalContext.current
     val prefs = remember { UserPreferences(context) }
     val nickname by prefs.nickname.collectAsState(initial = null)
@@ -36,7 +40,16 @@ fun ProfileScreen(onSettings: () -> Unit, onAccount: () -> Unit, onSubscription:
     val role by prefs.userRole.collectAsState(initial = null)
     val endDate by prefs.subscriptionEndDate.collectAsState(initial = null)
     val appearance by prefs.appearance.collectAsState(initial = "system")
+    var appearanceAction by rememberSaveable { mutableStateOf("") }
+    var memberAppearance by remember { mutableStateOf<MemberAppearance?>(null) }
+    val scope = rememberCoroutineScope()
+    RefreshOnResume { scope.launch {
+        try { memberAppearance = RetrofitClient.create(context).getMemberAppearance() }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (_: Exception) { memberAppearance = null }
+    } }
     val colors = MaterialTheme.colorScheme
+    val plus = memberAppearance?.is_plus ?: (role == "admin" || isUserPlus(endDate))
     val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty() }
     fun feedback() {
         try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("mailto:14329140@qq.com"))) }
@@ -46,31 +59,41 @@ fun ProfileScreen(onSettings: () -> Unit, onAccount: () -> Unit, onSubscription:
         item {
             Row(Modifier.fillMaxWidth().clickable(onClick = onPublicProfile).padding(bottom = 22.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                if (!avatar.isNullOrBlank()) AsyncImage(avatar, "个人头像", Modifier.size(52.dp).clip(CircleShape), contentScale = ContentScale.Crop)
-                else Box(Modifier.size(52.dp).background(colors.surfaceVariant, CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Person, null, Modifier.size(28.dp)) }
+                MemberAvatar(avatar, memberAppearance)
                 Column(Modifier.weight(1f)) {
-                    Text(nickname ?: name ?: "同学", style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(nickname ?: name ?: "同学", style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                        MemberLabel(memberAppearance)
+                    }
                     Text(slogan?.takeIf { it.isNotBlank() } ?: "保持热爱，也保持专注", style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = colors.onSurfaceVariant)
             }
-            Surface(onClick = onSubscription, color = Color(0xFF202224), shape = RoundedCornerShape(12.dp)) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 78.dp).padding(horizontal = 18.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Icon(Icons.Outlined.WorkspacePremium, null, Modifier.size(29.dp), tint = Color.White)
-                    Column(Modifier.weight(1f)) {
-                        Text(if (isUserPlus(endDate)) "Plus 会员特权已启用" else "Plus 会员", style = MaterialTheme.typography.titleSmall, color = Color.White)
-                        Text(if (isUserPlus(endDate)) "到期时间：${endDate.orEmpty().take(10)}" else "解锁完整题库与更多学习权益",
-                            style = MaterialTheme.typography.labelSmall, color = Color(0xFFB9BDC4), modifier = Modifier.padding(top = 4.dp))
+            Surface(onClick = onSubscription, color = colors.surface, shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, if (plus) colors.primary.copy(alpha = .22f) else colors.outlineVariant)) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.size(32.dp).background(if (plus) colors.primary.copy(alpha = .06f) else colors.surfaceVariant, RoundedCornerShape(9.dp))
+                        .border(1.dp, if (plus) colors.primary.copy(alpha = .16f) else colors.outlineVariant, RoundedCornerShape(9.dp)),
+                        contentAlignment = Alignment.Center) {
+                        PlusMark(Modifier.size(15.dp), tint = if (plus) colors.primary else colors.onSurfaceVariant)
                     }
-                    Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = Color.White)
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Text(if (plus) "Plus 会员已启用" else "升级 Plus", style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Text(if(role=="admin") "管理员学习权益" else if (plus) "到期时间：${endDate.orEmpty().take(10)}" else "解锁完整题库与更多学习权益",
+                            style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp))
+                    }
+                    Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = colors.onSurfaceVariant)
                 }
             }
             Spacer(Modifier.height(14.dp))
             ProfileLine(Icons.Outlined.PersonOutline, "账号与安全", onClick = onAccount)
-            ProfileLine(Icons.Outlined.DarkMode, "主题模式", when (appearance) { "light" -> "浅色"; "dark" -> "深色"; else -> "跟随系统" }) { onSettingsAction("theme") }
-            ProfileLine(Icons.Outlined.Palette, "重点色", accent = true) { onSettingsAction("accent") }
+            ProfileLine(Icons.Outlined.DarkMode, "主题模式", when (appearance) { "light" -> "浅色"; "dark" -> "深色"; else -> "跟随系统" }) { appearanceAction = "theme" }
+            ProfileLine(Icons.Outlined.Palette, "重点色", accent = true) { appearanceAction = "accent" }
+            ProfileLine(Icons.Outlined.Tune, "Plus 个性化", if(plus)"已解锁" else "会员权益", onClick=onPersonalize)
             Spacer(Modifier.height(12.dp))
             ProfileLine(Icons.Outlined.MailOutline, "意见反馈", onClick = ::feedback)
             ProfileLine(Icons.Outlined.StarBorder, "给应用评分") { onSettingsAction("rating") }
@@ -84,6 +107,7 @@ fun ProfileScreen(onSettings: () -> Unit, onAccount: () -> Unit, onSubscription:
             ProfileLine(Icons.Outlined.Settings, "更多设置", onClick = onSettings)
         }
     }
+    if (appearanceAction.isNotEmpty()) AppearanceSheet(appearanceAction) { appearanceAction = "" }
 }
 
 @Composable

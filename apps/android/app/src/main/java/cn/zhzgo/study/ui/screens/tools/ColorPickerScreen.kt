@@ -32,11 +32,11 @@ fun ColorPickerScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("颜色工具", fontWeight = FontWeight.Bold) },
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
+                title = { Text("颜色工具") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 }
             )

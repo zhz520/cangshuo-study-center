@@ -149,6 +149,10 @@
 
 截图参考版编译日志为 `D:\CodexData\temp\study-security\ui-reference-compile.log`。编译临时缓存及完整日志在 D 盘 `D:\CodexData\temp\study-security`；项目和评审稿均保存在当前 D 盘工程内。
 
+## 2026-10-23 补齐页面与功能
+
+工具页、QQ 绑定、投稿和内嵌网页补齐统一页头；答题卡增加每页 50 题的前后翻页；首页和统计可进入分页排行榜；今日指标使用服务端中国日期；新增 Plus 个性化与字号预览。调试包更新为 `artifacts/android/app-debug-1.1.2-20261023.apk`（从项目根目录算起）。Android 构建与 JUnit 19 项通过，仍无连接真机。详见 [完整实施与生产验证记录](../../../docs/ui-completion-2026-10-23.md)。
+
 ## 文件索引
 
 - `app/src/main/java/cn/zhzgo/study/ui/theme/`：设计令牌。

@@ -44,6 +44,7 @@ const db = {
             return [[{ setting_key: 'site_title', setting_value: '测试平台' }, { setting_key: 'smtp_pass', setting_value: 'fixture-secret' }, { setting_key: 'future_private_key', setting_value: 'fixture-secret' }]];
         }
         if (sql.includes('FROM countdowns') || sql.includes('FROM external_links')) return [[]];
+        if (sql.startsWith('SELECT question_id FROM user_progress')) return [savedProgress && savedProgress[1] === params[1] ? [{ question_id: params[1] }] : []];
         if (sql.startsWith('INSERT INTO user_progress')) { savedProgress = params; return [{ affectedRows: 1 }]; }
         if (sql.startsWith('INSERT IGNORE INTO user_favorites')) return [{ affectedRows: 1 }];
         if (sql.includes('FROM questions WHERE id = ?')) return [[questions.find(q => q.id === Number(params[0]))].filter(Boolean)];
@@ -79,8 +80,10 @@ adminRouter.use(verifyToken, isAdmin);
 adminRouter.get(['/questions', '/cards'], (_req, res) => res.json({ ok: true }));
 app.use('/admin', adminRouter);
 app.get('/bot', verifyBot, (_req, res) => res.json({ ok: true }));
+const { prepare } = require('./transport-client.cjs');
 async function request(path, options = {}) {
     const token = options.token === null ? null : options.token || jwt.sign({ id: 1, role: 'admin', subscription_end_date: '2099-01-01' }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const transport = prepare(options.method || 'GET', path, token ? `Bearer ${token}` : '');
     // Exercise actual Express routing/middleware without opening a network connection.
     return new Promise((resolve, reject) => {
         const socket = new (require('node:stream').PassThrough)();
@@ -88,13 +91,13 @@ async function request(path, options = {}) {
         const req = new (require('node:http').IncomingMessage)(socket);
         req.url = path; req.method = options.method || 'GET';
         req.headers = Object.fromEntries(Object.entries({
-            ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json', ...(options.headers || {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json', ...transport.headers, ...(options.headers || {}),
         }).map(([key, value]) => [key.toLowerCase(), value]));
         req._body = true; req.body = options.body || {};
         const res = new (require('node:http').ServerResponse)(req);
         res.end = (data) => {
             try {
-                resolve({ status: res.statusCode, headers: new Headers(res.getHeaders()), body: JSON.parse(String(data)) });
+                resolve({ status: res.statusCode, headers: new Headers(res.getHeaders()), body: res.statusCode < 400 && JSON.parse(String(data)).protected ? transport.open(JSON.parse(String(data))) : JSON.parse(String(data)) });
             } catch (error) { reject(error); }
             return res;
         };
@@ -224,7 +227,8 @@ test('search, recommendations, favorites and mistakes all enforce the same previ
 
 test('progress correctness is computed on the server and inaccessible favorites are rejected', async () => {
     account = { id: 1, role: 'user', has_subscription: 0 }; allowedSubjects = null; counters.clear();
-    const response = await request('/api/data/progress', { method: 'POST', body: { question_id: 1, answer: 'B', is_correct: true } });
+    const page = await request('/api/data/questions/1');
+    const response = await request('/api/data/progress', { method: 'POST', body: { question_id: 1, answer: 'B', is_correct: true, answer_token: page.body.answer_token } });
     assert.equal(response.status, 200); assert.equal(savedProgress[2], false);
     assert.equal((await request('/api/data/favorites', { method: 'POST', body: { question_id: 21 } })).status, 403);
 });
@@ -247,7 +251,7 @@ test('atomic shared budgets reject concurrent overuse and survive new requests',
 
 test('question delivery budgets return 429 and Retry-After without serving extra rows', async () => {
     account = { id: 1, role: 'user', has_subscription: 0 }; allowedSubjects = null; counters.clear();
-    for (let i = 0; i < 50; i++) assert.equal((await request('/api/data/questions?subject_id=10')).status, 200);
+    for (let i = 0; i < 5; i++) assert.equal((await request('/api/data/questions?subject_id=10')).status, 200);
     const denied = await request('/api/data/questions?subject_id=10');
     assert.equal(denied.status, 429);
     assert.ok(Number(denied.headers.get('retry-after')) > 0);
@@ -341,4 +345,21 @@ test('server grading normalizes legacy answers while preserving ordering and tex
     assert.ok(scoreAnswer({ type: 'judge', answer: '["A"]' }, '正确'));
     assert.ok(!scoreAnswer({ type: 'sort', answer: '["A","B"]' }, '["B","A"]'));
     assert.ok(scoreAnswer({ type: 'fill', answer: '南京' }, ' 南京 '));
+});
+
+
+test('practice pages withhold answers and require a read ticket bound to the account and question', async () => {
+    account = { id: 1, role: 'user', has_subscription: 0 }; counters.clear(); savedProgress = null;
+    const read = await request('/api/data/questions/1');
+    assert.equal(read.body.answer, null); assert.equal(read.body.analysis, null);
+    assert.equal((await request('/api/data/questions/1/review')).status, 403);
+    assert.equal((await request('/api/data/progress', { method: 'POST', body: { question_id: 1, answer: 'A' } })).status, 403);
+    assert.equal((await request('/api/data/progress', { method: 'POST', body: { question_id: 2, answer: 'A', answer_token: read.body.answer_token } })).status, 403);
+    const grade = await request('/api/data/progress', { method: 'POST', body: { question_id: 1, answer: 'A', answer_token: read.body.answer_token } });
+    assert.equal(grade.status, 200); assert.equal(grade.body.is_correct, true);
+    assert.equal(grade.body.question.answer, 'A');
+    assert.equal((await request('/api/data/questions/1/review?answer_token=' + read.body.answer_token)).body.answer, 'A');
+    savedProgress = null;
+    const review = await request('/api/data/progress', { method: 'POST', body: { question_id: 1, answer: 'B', answer_token: read.body.answer_token, review_only: true } });
+    assert.equal(review.status, 200); assert.equal(review.body.is_correct, false); assert.equal(savedProgress, null);
 });

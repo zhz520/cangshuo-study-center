@@ -6,7 +6,9 @@ import './assets/study-ui.css'
 import App from './App.vue'
 import router from './router'
 import 'nprogress/nprogress.css' // Global Progress Bar
+import { applyTheme } from './utils/theme'
 
+applyTheme()
 
 const app = createApp(App)
 

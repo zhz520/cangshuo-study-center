@@ -1,380 +1,300 @@
-<template>
-  <div class="p-4 sm:p-6 space-y-5">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/50 dark:bg-slate-800/50 p-5 sm:p-6 rounded-3xl backdrop-blur-xl border border-white/20 dark:border-slate-700/50 shadow-sm">
-      <div>
-        <h2 class="text-xl sm:text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
-          <span>🔐</span> 题库访问控制
-        </h2>
-        <p class="text-xs text-slate-500 font-bold mt-1">配置用户对专业分类（Majors）的访问权限</p>
-      </div>
-      <div class="flex gap-2 w-full sm:w-auto">
-        <button 
-          @click="fetchData" 
-          class="flex-1 sm:flex-none px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2"
-        >
-          <span>🔄</span> 刷新
-        </button>
-        <button 
-          @click="saveChanges" 
-          :disabled="!hasChanges"
-          class="flex-1 sm:flex-none px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:grayscale text-white rounded-2xl text-xs font-black shadow-lg shadow-indigo-200/50 dark:shadow-none transition-all flex items-center justify-center gap-2"
-        >
-          <span>💾</span> 保存更改
-        </button>
-      </div>
-    </div>
-
-    <!-- Search / Stats Bar -->
-    <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-      <div class="relative flex-1">
-        <input 
-          v-model="searchQuery" 
-          placeholder="搜索用户名..." 
-          class="w-full pl-9 pr-4 py-2.5 bg-white/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all placeholder:font-normal hover:border-indigo-300 dark:hover:border-indigo-600 backdrop-blur-sm"
-        >
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
-      </div>
-      <div class="flex items-center gap-3 text-xs font-bold text-slate-400 px-1">
-        <span>👤 <b class="text-indigo-600 dark:text-indigo-400">{{ filteredUsers.length }}</b> 用户</span>
-        <span class="text-slate-200 dark:text-slate-700">|</span>
-        <span>📚 <b class="text-indigo-600 dark:text-indigo-400">{{ majors.length }}</b> 分类</span>
-        <Transition name="fade">
-          <span v-if="hasChanges" class="text-amber-500 animate-pulse">● 未保存</span>
-        </Transition>
-      </div>
-    </div>
-
-    <!-- Loading -->
-    <div v-if="loading" class="glass-card p-20 flex flex-col items-center justify-center text-slate-400 animate-pulse">
-      <div class="w-10 h-10 rounded-full border-4 border-slate-100 border-t-indigo-500 animate-spin mb-4"></div>
-      <span class="text-[10px] font-black tracking-widest uppercase">Loading Access Matrix...</span>
-    </div>
-
-    <template v-else>
-    <!-- ========== DESKTOP: Matrix Table ========== -->
-    <div class="hidden lg:block glass-card overflow-hidden">
-      <div class="overflow-x-auto relative">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-slate-50/50 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-700">
-              <th class="px-6 py-5 min-w-[220px] sticky left-0 z-20 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-r border-r border-slate-100 dark:border-slate-700">
-                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">User / Major</div>
-                <div class="text-sm font-black text-slate-800 dark:text-white">用户列表</div>
-              </th>
-              <th v-for="major in majors" :key="major.id" class="px-4 py-5 min-w-[100px] text-center">
-                <div class="inline-block px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-tighter whitespace-nowrap leading-tight max-w-[110px] truncate" :title="major.name">
-                  {{ major.name }}
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
-            <tr v-for="user in filteredUsers" :key="user.id" class="group hover:bg-slate-50/30 dark:hover:bg-slate-900/10 transition-colors">
-              <td class="px-6 py-4 sticky left-0 z-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border-r border-slate-100 dark:border-slate-700 group-hover:bg-indigo-50/50 dark:group-hover:bg-indigo-900/20 transition-colors">
-                <div class="flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-black text-slate-500 overflow-hidden flex-shrink-0">
-                    <img v-if="user.avatar" :src="user.avatar" class="w-full h-full object-cover">
-                    <span v-else>{{ (user.nickname || user.username).charAt(0).toUpperCase() }}</span>
-                  </div>
-                  <div class="min-w-0">
-                    <div class="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{{ user.nickname || user.username }}</div>
-                    <div class="text-[9px] text-slate-400 font-mono">ID: #{{ user.id }}</div>
-                  </div>
-                  <!-- Permission count badge -->
-                  <div class="ml-auto text-[9px] font-black px-2 py-0.5 rounded-full"
-                    :class="getUserPermCount(user.id) > 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500'"
-                  >
-                    {{ getUserPermCount(user.id) }}
-                  </div>
-                </div>
-              </td>
-              <td v-for="major in majors" :key="major.id" class="px-4 py-4 text-center">
-                <label class="inline-flex items-center cursor-pointer group/check relative">
-                  <input 
-                    type="checkbox" 
-                    :checked="hasPermission(user.id, major.id)"
-                    @change="(e) => togglePermission(user.id, major.id, e.target.checked)"
-                    class="sr-only peer"
-                  >
-                  <div class="w-10 h-6 bg-slate-100 dark:bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 shadow-inner group-hover/check:scale-105 transition-transform"></div>
-                </label>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ========== MOBILE/TABLET: Card Layout ========== -->
-    <div class="lg:hidden space-y-3">
-      <div 
-        v-for="user in filteredUsers" 
-        :key="user.id" 
-        class="glass-card overflow-hidden transition-all duration-300"
-      >
-        <!-- User Header (Tap to expand) -->
-        <div 
-          @click="toggleExpand(user.id)" 
-          class="flex items-center gap-3 p-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors active:scale-[0.99]"
-        >
-          <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-black text-slate-500 overflow-hidden flex-shrink-0">
-            <img v-if="user.avatar" :src="user.avatar" class="w-full h-full object-cover">
-            <span v-else>{{ (user.nickname || user.username).charAt(0).toUpperCase() }}</span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{{ user.nickname || user.username }}</div>
-            <div class="text-[10px] text-slate-400 font-mono">ID: #{{ user.id }}</div>
-          </div>
-          <!-- Permission count -->
-          <div class="text-[10px] font-black px-2.5 py-1 rounded-full"
-            :class="getUserPermCount(user.id) > 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500'"
-          >
-            {{ getUserPermCount(user.id) }} / {{ majors.length }}
-          </div>
-          <!-- Expand Icon -->
-          <div class="text-slate-400 text-xs transition-transform duration-300" :class="{ 'rotate-180': expandedUsers.has(user.id) }">
-            ▼
-          </div>
-        </div>
-
-        <!-- Expanded Permissions -->
-        <Transition name="expand">
-          <div v-if="expandedUsers.has(user.id)" class="border-t border-slate-100 dark:border-slate-700/50">
-            <!-- Quick actions -->
-            <div class="flex gap-2 px-4 py-3 bg-slate-50/50 dark:bg-slate-900/20 border-b border-slate-100 dark:border-slate-700/30">
-              <button 
-                @click="setAllPerms(user.id, true)" 
-                class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-black transition-all"
-              >
-                ✅ 全部授权
-              </button>
-              <button 
-                @click="setAllPerms(user.id, false)" 
-                class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 rounded-lg text-[10px] font-black transition-all"
-              >
-                🚫 全部撤销
-              </button>
-            </div>
-            <!-- Major toggles -->
-            <div class="divide-y divide-slate-50 dark:divide-slate-700/30">
-              <div 
-                v-for="major in majors" 
-                :key="major.id" 
-                class="flex items-center justify-between px-4 py-3 hover:bg-slate-50/30 dark:hover:bg-slate-700/20 transition-colors"
-              >
-                <span class="text-xs font-bold text-slate-600 dark:text-slate-300 truncate flex-1 mr-3">
-                  {{ major.name }}
-                </span>
-                <label class="inline-flex items-center cursor-pointer group/check relative flex-shrink-0">
-                  <input 
-                    type="checkbox" 
-                    :checked="hasPermission(user.id, major.id)"
-                    @change="(e) => togglePermission(user.id, major.id, e.target.checked)"
-                    class="sr-only peer"
-                  >
-                  <div class="w-11 h-6 bg-slate-200 dark:bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-[18px] after:w-[18px] after:transition-all peer-checked:bg-emerald-500 shadow-inner transition-colors"></div>
-                </label>
-              </div>
-            </div>
-          </div>
-        </Transition>
-      </div>
-    </div>
-
-    <!-- Empty State -->
-    <div v-if="filteredUsers.length === 0 && searchQuery" class="text-center py-16">
-      <span class="text-3xl block mb-2 opacity-50">🔍</span>
-      <p class="text-slate-400 font-bold text-sm">未找到匹配 "{{ searchQuery }}" 的用户</p>
-    </div>
-    </template>
-
-    <!-- Instructions -->
-    <div class="p-5 bg-indigo-50/80 dark:bg-indigo-500/5 rounded-3xl border border-indigo-100/50 dark:border-indigo-500/10">
-      <h4 class="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2">💡 操作说明</h4>
-      <ul class="text-[11px] text-indigo-500 dark:text-indigo-300/60 font-medium space-y-1.5">
-        <li>• 当用户<b>没有</b>任何访问控制记录时，默认可查看<b>所有</b>专业分类。</li>
-        <li>• 一旦给用户分配了<b>任意</b>专业权限，该用户将<b>仅</b>能访问被授权的分类。</li>
-        <li>• 绿色开关 = 已授权，灰色开关 = 未授权。</li>
-        <li>• 修改后请点击 <b>"保存更改"</b> 使配置生效。</li>
-      </ul>
-    </div>
-
-    <Toast ref="toast" />
-    <ConfirmDialog ref="confirmDialog" />
-  </div>
-</template>
-
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
+import { computed, onMounted, ref } from 'vue';
 import { admin } from '../../api';
 import Toast from '../../components/ui/Toast.vue';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 
 const users = ref([]);
 const majors = ref([]);
-const permissions = ref([]); // List of { user_id, major_id }
-const originalPermissions = ref([]);
+const permissions = ref([]);
 const loading = ref(true);
+const saving = ref(false);
+const error = ref('');
 const toast = ref(null);
 const confirmDialog = ref(null);
 const searchQuery = ref('');
-const expandedUsers = ref(new Set());
+const selectedUserId = ref(null);
+const mode = ref('all');
+const selectedMajorIds = ref([]);
 
 const filteredUsers = computed(() => {
-  if (!searchQuery.value) return users.value;
-  const q = searchQuery.value.toLowerCase();
-  return users.value.filter(u => 
-    u.username.toLowerCase().includes(q) || 
-    (u.nickname && u.nickname.toLowerCase().includes(q)) ||
-    String(u.id).includes(q)
-  );
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return users.value;
+  return users.value.filter(user => {
+    return String(user.username || '').toLowerCase().includes(query)
+      || String(user.nickname || '').toLowerCase().includes(query)
+      || String(user.id).includes(query);
+  });
 });
 
-const getUserPermCount = (userId) => {
-  return permissions.value.filter(p => p.user_id === userId).length;
+const selectedUser = computed(() => users.value.find(user => user.id === selectedUserId.value) || null);
+const restrictedCount = computed(() => users.value.filter(user => permissionIds(user.id).length > 0).length);
+const unrestrictedCount = computed(() => users.value.length - restrictedCount.value);
+const isDirty = computed(() => {
+  if (!selectedUser.value) return false;
+  const original = permissionIds(selectedUser.value.id).slice().sort((a, b) => a - b);
+  const originalMode = original.length ? 'specified' : 'all';
+  if (mode.value !== originalMode) return true;
+  if (mode.value === 'all') return false;
+  const current = selectedMajorIds.value.slice().sort((a, b) => a - b);
+  return current.join(',') !== original.join(',');
+});
+const canSave = computed(() => Boolean(selectedUser.value) && isDirty.value && !saving.value && (mode.value === 'all' || selectedMajorIds.value.length > 0));
+
+const permissionIds = (userId) => permissions.value.filter(row => row.user_id === userId).map(row => row.major_id);
+const accessLabel = (userId) => {
+  const count = permissionIds(userId).length;
+  if (!count) return '全部专业';
+  return count === majors.value.length ? '全部分类（显式）' : String(count) + ' 个分类';
+};
+const displayName = (user) => user.nickname || user.username || '未命名用户';
+const roleLabel = (role) => role === 'admin' ? '管理员' : role === 'demo' ? '演示账号' : '普通用户';
+
+const resetEditor = () => {
+  selectedUserId.value = null;
+  selectedMajorIds.value = [];
+  mode.value = 'all';
 };
 
-const toggleExpand = (userId) => {
-  const s = new Set(expandedUsers.value);
-  if (s.has(userId)) s.delete(userId);
-  else s.add(userId);
-  expandedUsers.value = s;
-};
-
-const setAllPerms = (userId, grant) => {
-  // Remove all current perms for this user
-  permissions.value = permissions.value.filter(p => p.user_id !== userId);
-  if (grant) {
-    // Add all majors
-    majors.value.forEach(m => {
-      permissions.value.push({ user_id: userId, major_id: m.id });
-    });
+const openUser = async (user) => {
+  if (user.id === selectedUserId.value) return;
+  if (isDirty.value) {
+    const discard = await confirmDialog.value?.confirm({ title: '放弃未保存修改？', message: '切换到其他账号会丢弃当前权限调整。', confirmText: '继续切换', type: 'warning' });
+    if (!discard) return;
   }
+  selectedUserId.value = user.id;
+  const ids = permissionIds(user.id);
+  mode.value = ids.length ? 'specified' : 'all';
+  selectedMajorIds.value = ids.slice();
 };
+
+const closeEditor = async () => {
+  if (isDirty.value) {
+    const discard = await confirmDialog.value?.confirm({ title: '关闭权限设置？', message: '当前调整尚未保存。', confirmText: '放弃修改', type: 'warning' });
+    if (!discard) return;
+  }
+  resetEditor();
+};
+
+const setMode = (nextMode) => {
+  if (nextMode === mode.value) return;
+  mode.value = nextMode;
+  if (nextMode === 'all') selectedMajorIds.value = [];
+  else if (!selectedMajorIds.value.length) selectedMajorIds.value = majors.value.map(major => major.id);
+};
+
+const toggleMajor = (majorId) => {
+  const selected = new Set(selectedMajorIds.value);
+  if (selected.has(majorId)) selected.delete(majorId);
+  else selected.add(majorId);
+  selectedMajorIds.value = majors.value.filter(major => selected.has(major.id)).map(major => major.id);
+};
+
+const selectAllMajors = () => { selectedMajorIds.value = majors.value.map(major => major.id); };
+const clearMajorSelection = () => { selectedMajorIds.value = []; };
 
 const fetchData = async () => {
   loading.value = true;
+  error.value = '';
   try {
-    const [usersRes, majorsRes, permsRes] = await Promise.all([
+    const [usersRes, majorsRes, permissionsRes] = await Promise.all([
       admin.getUsers(),
       admin.getMajors(),
-      admin.getAccessControls()
+      admin.getAccessControls(),
     ]);
-    
-    users.value = usersRes.data;
-    majors.value = majorsRes.data;
-    
-    const perms = permsRes.data.map(p => ({ user_id: p.user_id, major_id: p.major_id }));
-    permissions.value = JSON.parse(JSON.stringify(perms));
-    originalPermissions.value = JSON.parse(JSON.stringify(perms));
-  } catch (err) {
-    toast.value?.add(err.response?.data?.error || '加载数据失败', 'error');
-  } finally {
-    loading.value = false;
-  }
-};
-
-const hasPermission = (userId, majorId) => {
-  return permissions.value.some(p => p.user_id === userId && p.major_id === majorId);
-};
-
-const togglePermission = (userId, majorId, granted) => {
-  if (granted) {
-    permissions.value.push({ user_id: userId, major_id: majorId });
-  } else {
-    permissions.value = permissions.value.filter(p => !(p.user_id === userId && p.major_id === majorId));
-  }
-};
-
-const hasChanges = computed(() => {
-  return JSON.stringify(permissions.value.sort((a,b) => a.user_id - b.user_id || a.major_id - b.major_id)) !== 
-         JSON.stringify(originalPermissions.value.sort((a,b) => a.user_id - b.user_id || a.major_id - b.major_id));
-});
-
-const saveChanges = async () => {
-  const confirmed = await confirmDialog.value.confirm({
-    title: '确认保存',
-    message: '确认要批量更新所有用户的资源访问权限吗？',
-    type: 'warning'
-  });
-  
-  if (!confirmed) return;
-  
-  loading.value = true;
-  try {
-    const touchedUserIds = new Set([
-        ...permissions.value.map(p => p.user_id),
-        ...originalPermissions.value.map(p => p.user_id)
-    ]);
-
-    let updateCount = 0;
-    for (const uid of touchedUserIds) {
-        const currentUserPerms = permissions.value.filter(p => p.user_id === uid).map(p => p.major_id);
-        const originalUserPerms = originalPermissions.value.filter(p => p.user_id === uid).map(p => p.major_id);
-        
-        if (JSON.stringify(currentUserPerms.sort()) === JSON.stringify(originalUserPerms.sort())) continue;
-
-        await admin.updateAccessControlBatch({
-            user_id: uid,
-            major_ids: currentUserPerms
-        });
-        updateCount++;
+    users.value = Array.isArray(usersRes.data) ? usersRes.data : [];
+    majors.value = Array.isArray(majorsRes.data) ? majorsRes.data : [];
+    permissions.value = (permissionsRes.data || []).map(row => ({ user_id: row.user_id, major_id: row.major_id }));
+    if (selectedUserId.value && !selectedUser.value) resetEditor();
+    else if (selectedUserId.value) {
+      const ids = permissionIds(selectedUserId.value);
+      selectedMajorIds.value = ids.slice();
+      mode.value = ids.length ? 'specified' : 'all';
     }
-
-    toast.value?.add(`访问权限已保存（更新了 ${updateCount} 位用户）`, 'success');
-    originalPermissions.value = JSON.parse(JSON.stringify(permissions.value));
   } catch (err) {
-    toast.value?.add(err.response?.data?.error || '保存失败', 'error');
+    error.value = err.response?.data?.error || '无法读取权限配置，请稍后重试';
   } finally {
     loading.value = false;
   }
 };
 
-onMounted(() => {
-  fetchData();
-});
+const saveUser = async () => {
+  if (!selectedUser.value) return;
+  if (mode.value === 'specified' && selectedMajorIds.value.length === 0) {
+    toast.value?.add('指定分类模式至少保留一个专业；如需开放全部，请选择“全部专业”', 'warning');
+    return;
+  }
+  const user = selectedUser.value;
+  const message = mode.value === 'all'
+    ? '恢复为可访问全部专业，包括以后新增的分类。'
+    : '限制为 ' + selectedMajorIds.value.length + ' 个专业分类。';
+  const confirmed = await confirmDialog.value?.confirm({ title: '保存访问权限', message: displayName(user) + '：' + message, confirmText: '保存', type: 'warning' });
+  if (!confirmed) return;
+  saving.value = true;
+  try {
+    const majorIds = mode.value === 'all' ? [] : selectedMajorIds.value.slice();
+    await admin.updateAccessControlBatch({ user_id: user.id, major_ids: majorIds });
+    permissions.value = permissions.value.filter(row => row.user_id !== user.id);
+    if (majorIds.length) permissions.value.push(...majorIds.map(majorId => ({ user_id: user.id, major_id: majorId })));
+    toast.value?.add(displayName(user) + ' 的访问权限已保存', 'success');
+  } catch (err) {
+    toast.value?.add(err.response?.data?.error || '保存失败，原权限未改变', 'error');
+  } finally {
+    saving.value = false;
+  }
+};
+
+onMounted(fetchData);
 </script>
 
+<template>
+  <div class="admin-workspace ui-page access-page admin-stack">
+    <header class="access-page-head">
+      <AdminPageHeading title="题库访问控制" description="按账号设定可见的专业范围；未设置限制的账号默认可访问全部专业。" />
+      <button type="button" class="ui-btn ui-btn-outline ui-btn-sm admin-control" :disabled="loading" @click="fetchData">刷新</button>
+    </header>
+
+    <div class="access-metrics">
+      <div class="access-metric"><span>账号</span><strong>{{ users.length }}</strong></div>
+      <div class="access-metric"><span>全部专业</span><strong>{{ unrestrictedCount }}</strong></div>
+      <div class="access-metric"><span>已限制</span><strong>{{ restrictedCount }}</strong></div>
+    </div>
+
+    <div v-if="error" class="access-error"><strong>权限数据加载失败</strong><span>{{ error }}</span><button type="button" class="ui-btn ui-btn-outline ui-btn-sm admin-control" @click="fetchData">重试</button></div>
+    <div v-else-if="loading" class="access-loading"><span class="ui-spinner"></span><span>正在读取账号与专业目录</span></div>
+
+    <div v-else class="access-layout">
+      <section class="access-directory">
+        <div class="access-toolbar">
+          <div class="ui-search"><svg class="ui-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input v-model="searchQuery" class="ui-input" placeholder="搜索用户名、昵称或 UID" aria-label="搜索账号" /></div>
+          <span>{{ filteredUsers.length }} 个账号</span>
+        </div>
+        <div v-if="filteredUsers.length" class="access-user-list">
+          <button v-for="user in filteredUsers" :key="user.id" type="button" class="access-user-row" :class="{ 'is-active': selectedUserId === user.id }" @click="openUser(user)">
+            <span class="access-avatar"><img v-if="user.avatar_icon || user.avatar" :src="user.avatar_icon || user.avatar" alt="" /><span v-else>{{ displayName(user).slice(0, 1) }}</span></span>
+            <span class="access-user-copy"><strong>{{ displayName(user) }}</strong><small>@{{ user.username }} · UID {{ user.id }}</small></span>
+            <span class="access-mode" :class="{ 'is-restricted': permissionIds(user.id).length > 0 }">{{ accessLabel(user.id) }}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+        <div v-else class="settings-empty access-empty"><strong>没有匹配账号</strong><span>换一个用户名或 UID 试试。</span></div>
+      </section>
+
+      <aside v-if="selectedUser" class="access-editor">
+        <header class="access-editor-head">
+          <div><span class="ui-eyebrow">权限设置</span><h2>{{ displayName(selectedUser) }}</h2><p>{{ roleLabel(selectedUser.role) }} · @{{ selectedUser.username }}</p></div>
+          <button type="button" class="access-close" aria-label="关闭权限设置" @click="closeEditor">×</button>
+        </header>
+
+        <div class="access-mode-tabs" role="group" aria-label="访问模式">
+          <button type="button" :class="{ 'is-active': mode === 'all' }" @click="setMode('all')">全部专业</button>
+          <button type="button" :class="{ 'is-active': mode === 'specified' }" @click="setMode('specified')">指定分类</button>
+        </div>
+
+        <div v-if="mode === 'all'" class="access-all-note"><strong>默认开放</strong><span>当前账号没有分类限制，可访问现有及以后新增的全部专业。</span></div>
+        <template v-else>
+          <div class="access-editor-tools"><span>已选 {{ selectedMajorIds.length }} / {{ majors.length }}</span><div><button type="button" class="admin-text-action" @click="selectAllMajors">全选</button><button type="button" class="admin-text-action danger" @click="clearMajorSelection">清空</button></div></div>
+          <div class="access-major-grid">
+            <label v-for="major in majors" :key="major.id" class="access-major" :class="{ 'is-checked': selectedMajorIds.includes(major.id) }">
+              <input type="checkbox" :checked="selectedMajorIds.includes(major.id)" @change="toggleMajor(major.id)" />
+              <span class="access-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></span>
+              <span>{{ major.name }}</span>
+            </label>
+          </div>
+          <p v-if="selectedMajorIds.length === 0" class="access-warning">至少选择一个专业；清空后无法保存，避免误把账号恢复为全部开放。</p>
+        </template>
+
+        <footer class="access-save-bar">
+          <span>{{ isDirty ? '有未保存修改' : '与当前配置一致' }}</span>
+          <div><button type="button" class="ui-btn ui-btn-outline ui-btn-sm admin-control" @click="closeEditor">取消</button><button type="button" class="ui-btn ui-btn-primary ui-btn-sm admin-control" :disabled="!canSave" @click="saveUser">{{ saving ? '保存中…' : '保存权限' }}</button></div>
+        </footer>
+      </aside>
+
+      <aside v-else class="access-editor access-editor-empty">
+        <span class="access-empty-mark">权</span>
+        <strong>选择一个账号</strong>
+        <p>从左侧账号列表进入权限设置。未设置限制的账号默认可访问全部专业。</p>
+      </aside>
+    </div>
+
+    <div class="access-note"><strong>权限规则</strong><span>未设置记录表示开放全部专业；保存指定分类后，仅保留被选中的分类。每次保存只影响当前账号。</span></div>
+    <Toast ref="toast" />
+    <ConfirmDialog ref="confirmDialog" />
+  </div>
+</template>
+
 <style scoped>
-.glass-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(226, 232, 240, 0.5);
-  border-radius: 1.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-}
-
-.dark .glass-card {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(51, 65, 85, 0.5);
-}
-
-.shadow-r {
-    box-shadow: 4px 0 10px -2px rgba(0,0,0,0.05);
-}
-
-/* Expand transition */
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  max-height: 1000px;
-  overflow: hidden;
-}
-
-.expand-enter-from,
-.expand-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-
-/* Fade transition */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.access-page-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+.access-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:0; overflow:hidden; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); }
+.access-metric { display:flex; flex-direction:column; gap:3px; padding:11px 14px; border-right:1px solid var(--border); }
+.access-metric:last-child { border-right:0; }
+.access-metric span { color:var(--text-quote); font-size:9px; }
+.access-metric strong { color:var(--text-main); font-size:19px; line-height:1.2; font-weight:650; font-variant-numeric:tabular-nums; }
+.access-layout { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(330px,.9fr); gap:14px; align-items:start; }
+.access-directory,.access-editor { overflow:hidden; border:1px solid var(--border); border-radius:12px; background:var(--bg-card); }
+.access-toolbar { display:flex; align-items:center; gap:12px; padding:11px 12px; border-bottom:1px solid var(--border); }
+.access-toolbar .ui-search { flex:1; }
+.access-toolbar .ui-input { min-height:34px; background:var(--bg-card); }
+.access-toolbar > span { flex:0 0 auto; color:var(--text-quote); font-size:10px; }
+.access-user-list { max-height:590px; overflow-y:auto; }
+.access-user-row { width:100%; min-height:59px; display:flex; align-items:center; gap:10px; padding:9px 14px; border-bottom:1px solid var(--border); color:var(--text-sub); text-align:left; }
+.access-user-row:last-child { border-bottom:0; }
+.access-user-row:hover { background:var(--bg-card-highlight); }
+.access-user-row.is-active { background:var(--primary-soft); box-shadow:inset 2px 0 var(--primary); }
+.access-avatar { width:31px; height:31px; flex:0 0 31px; display:grid; place-items:center; overflow:hidden; border-radius:50%; background:var(--bg-card-highlight); color:var(--text-sub); font-size:11px; font-weight:600; }
+.access-avatar img { width:100%; height:100%; object-fit:cover; }
+.access-user-copy { display:flex; flex:1; min-width:0; flex-direction:column; gap:3px; }
+.access-user-copy strong { overflow:hidden; color:var(--text-main); font-size:12px; font-weight:550; text-overflow:ellipsis; white-space:nowrap; }
+.access-user-copy small { overflow:hidden; color:var(--text-quote); font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+.access-mode { flex:0 0 auto; padding:3px 6px; border-radius:4px; background:var(--bg-card-highlight); color:var(--text-quote); font-size:9px; }
+.access-mode.is-restricted { background:var(--primary-soft); color:var(--primary); }
+.access-editor { padding:18px; }
+.access-editor-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.access-editor-head h2 { margin:4px 0 0; color:var(--text-main); font-size:18px; font-weight:600; }
+.access-editor-head p { margin-top:4px; color:var(--text-quote); font-size:10px; }
+.access-close { width:30px; height:30px; border-radius:7px; color:var(--text-sub); font-size:20px; line-height:1; }
+.access-close:hover { background:var(--bg-card-highlight); color:var(--text-main); }
+.access-mode-tabs { display:flex; gap:2px; padding:3px; margin-top:14px; border-radius:8px; background:var(--bg-card-highlight); }
+.access-mode-tabs button { flex:1; min-height:31px; border-radius:6px; color:var(--text-sub); font-size:10px; }
+.access-mode-tabs button.is-active { background:var(--bg-card); color:var(--text-main); box-shadow:var(--shadow); font-weight:600; }
+.access-all-note { display:flex; flex-direction:column; gap:4px; margin-top:14px; padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--bg-card-highlight); }
+.access-all-note strong { color:var(--text-main); font-size:12px; font-weight:550; }
+.access-all-note span { color:var(--text-sub); font-size:10px; line-height:1.65; }
+.access-editor-tools { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:12px; color:var(--text-quote); font-size:10px; }
+.access-editor-tools > div { display:flex; }
+.access-major-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; max-height:330px; margin-top:8px; overflow-y:auto; }
+.access-major { display:flex; align-items:center; gap:7px; min-height:34px; padding:5px 7px; border:1px solid transparent; border-radius:6px; color:var(--text-sub); font-size:10px; cursor:pointer; }
+.access-major:hover { background:var(--bg-card-highlight); }
+.access-major.is-checked { background:var(--primary-soft); color:var(--text-main); }
+.access-major input { position:absolute; opacity:0; pointer-events:none; }
+.access-check { width:15px; height:15px; flex:0 0 15px; display:grid; place-items:center; border:1px solid var(--border-strong); border-radius:4px; color:transparent; }
+.access-major.is-checked .access-check { border-color:var(--primary); background:var(--primary); color:#fff; }
+.access-warning { margin-top:8px; color:var(--warning); font-size:9px; line-height:1.5; }
+.access-save-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
+.access-save-bar > span { color:var(--text-quote); font-size:9px; }
+.access-save-bar > div { display:flex; gap:6px; }
+.access-editor-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:290px; padding:36px; color:var(--text-sub); text-align:center; }
+.access-empty-mark { width:38px; height:38px; display:grid; place-items:center; margin-bottom:14px; border:1px solid var(--border); border-radius:9px; color:var(--text-quote); font-size:12px; }
+.access-editor-empty strong { color:var(--text-main); font-size:13px; font-weight:550; }
+.access-editor-empty p { max-width:260px; margin-top:6px; color:var(--text-quote); font-size:10px; line-height:1.7; }
+.access-loading { display:flex; align-items:center; justify-content:center; gap:10px; min-height:260px; border:1px solid var(--border); border-radius:12px; background:var(--bg-card); color:var(--text-sub); font-size:11px; }
+.access-error { display:flex; flex-direction:column; align-items:center; gap:5px; min-height:220px; padding:32px; border:1px solid var(--border); border-radius:12px; background:var(--bg-card); text-align:center; }
+.access-error strong { color:var(--danger); font-size:13px; }
+.access-error span { color:var(--text-sub); font-size:10px; }
+.access-error button { margin-top:8px; }
+.access-note { display:flex; gap:10px; margin-top:14px; padding:11px 13px; border:1px solid var(--border); border-radius:8px; background:var(--bg-card-highlight); color:var(--text-sub); font-size:10px; line-height:1.6; }
+.access-note strong { flex:0 0 auto; color:var(--text-main); font-weight:550; }
+.access-empty { margin:0; border:0; }
+@media(max-width:960px) { .access-layout { grid-template-columns:1fr; } .access-user-list { max-height:420px; } }
+@media(max-width:600px) {
+  .access-page-head { align-items:flex-start; flex-direction:column; }
+  .access-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .access-metric { padding:9px 10px; }
+  .access-metric strong { font-size:17px; }
+  .access-major-grid { grid-template-columns:1fr; }
+  .access-save-bar { align-items:flex-start; flex-direction:column; }
+  .access-save-bar > div { width:100%; }
+  .access-save-bar .ui-btn { flex:1; }
 }
 </style>

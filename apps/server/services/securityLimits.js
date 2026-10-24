@@ -40,9 +40,10 @@ function rateLimit(scope, limit, seconds = 60) {
 
 async function chargeQuestions(req, count, db = pool, now = Date.now()) {
     if (!count || req.account?.role === 'admin') return;
-    await reserve('question-hour', req.rateSubject || req.userId, count, 1000, 3600, db, now);
-    await reserve('question-day', req.rateSubject || req.userId, count, 5000, 86400, db, now);
-    await reserve('question-ip-hour', req.ip, count, 10000, 3600, db, now);
+    await reserve('question-minute-v2', req.rateSubject || req.userId, count, 100, 60, db, now);
+    await reserve('question-hour-v2', req.rateSubject || req.userId, count, 300, 3600, db, now);
+    await reserve('question-day-v2', req.rateSubject || req.userId, count, 1500, 86400, db, now);
+    await reserve('question-ip-hour-v2', req.ip, count, 3000, 3600, db, now);
 }
 
 // Question exports are authorized by an admin-issued password and limited separately

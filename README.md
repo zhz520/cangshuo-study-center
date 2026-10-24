@@ -3,6 +3,8 @@
 烁学是一套面向职教高考和计算机考试的学习系统，包含 Android App、Web 前端、Node API 和 QQ Bot。
 
 当前题库已完成格式统一和 AES-256-GCM 存储加密，会员与题库访问权限由服务端控制。最近一次生产发布和验证记录见 [docs/deployment-2026-10-22.md](docs/deployment-2026-10-22.md)。
+2026-10-23 页面统一、答题卡分页、排行榜、今日学习统计与 Plus 个性化记录见 [docs/ui-completion-2026-10-23.md](docs/ui-completion-2026-10-23.md)。
+2026-10-24 公告栏、Plus 头像与会员铭牌、网页题库目录、答题工具菜单及后台模块统一记录见 [docs/ui-coherence-2026-10-24.md](docs/ui-coherence-2026-10-24.md)。
 
 GitHub 仓库：<https://github.com/zhz520/cangshuo-study-center>。公开仓库只包含源码、文档和构建所需的小体积 SDK 文件；原始题库 JSON、APK、用户上传内容、真实 `.env`、Firebase 配置和推送私钥保留在本机或私有备份，不进入公开仓库。
 
@@ -28,7 +30,7 @@ archive/    旧脚本和迁移残留，不参与运行
 | --- | --- |
 | Web | <https://study.zhzgo.cn/> |
 | API | <https://studyapi.zhzgo.cn/> |
-| Android 调试包 | 本机 `artifacts/android/app-debug-1.1.2-20261022.apk`（公开仓库不包含 APK） |
+| Android 发布包 | 本机 `artifacts/android/app-release-2.0.1-20261024.apk`（versionCode 201，原证书签名；公开仓库不包含 APK） |
 | 项目架构 | [docs/architecture.md](docs/architecture.md) |
 | 安全与会员边界 | [docs/security.md](docs/security.md) |
 | AI 协作规范 | [docs/vibe-coding.md](docs/vibe-coding.md) |

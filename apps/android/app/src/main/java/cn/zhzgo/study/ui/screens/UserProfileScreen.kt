@@ -34,15 +34,14 @@ fun UserProfileScreen(userId:String,onBack:()->Unit,onArticleClick:(Int)->Unit,o
             data?.let{profile->
                 item {
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)) {
-                        if(profile.user.avatar_icon?.startsWith("http")==true)AsyncImage(profile.user.avatar_icon,null,Modifier.size(52.dp).clip(CircleShape))
-                        else Icon(Icons.Outlined.PersonOutline,null,Modifier.size(44.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+                        MemberAvatar(profile.user.avatar_icon, profile.user.appearance)
                         Column(Modifier.weight(1f)) {
                             Text(profile.user.nickname ?: profile.user.username,style=MaterialTheme.typography.headlineSmall)
+                            MemberLabel(profile.user.appearance)
                             Text("UID ${profile.user.id}${if(profile.user.role=="admin")" · 官方账号" else ""}",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     profile.user.slogan?.takeIf{it.isNotBlank()}?.let{Text(it,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=16.dp))}
-                    if(isUserPlus(profile.user.subscription_end_date))Text("Plus 会员",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary,modifier=Modifier.padding(top=8.dp))
                     if(userId=="me")TextButton(onClick=onNavigateToSubscription){Text("会员与权益")}
                     Spacer(Modifier.height(24.dp))
                     Row {

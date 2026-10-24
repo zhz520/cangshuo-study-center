@@ -23,7 +23,7 @@ async function verifyToken(req, res, next) {
         req.account = { ...rows[0], has_subscription: Number(rows[0].has_subscription) === 1 };
         req.userId = rows[0].id;
         req.userRole = rows[0].role;
-        next();
+        require('../services/questionTransport').questionTransport(req, res, next);
     } catch {
         res.status(503).json({ message: '暂时无法验证账号权限，请稍后再试' });
     }

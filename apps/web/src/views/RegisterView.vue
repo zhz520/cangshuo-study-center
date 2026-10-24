@@ -1,4 +1,5 @@
 <script setup>
+import BrandLogo from '../components/BrandLogo.vue';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { auth } from '../api';
@@ -74,7 +75,7 @@ const handleRegister = async () => {
 <template>
   <div class="auth-page">
     <section class="auth-brand-panel">
-      <RouterLink to="/" class="web-brand"><span class="web-brand-mark">烁</span><span>烁学</span></RouterLink>
+      <RouterLink to="/" class="web-brand"><BrandLogo /><span>烁学</span></RouterLink>
       <div class="auth-brand-copy">
         <span class="ui-eyebrow">创建学习空间</span>
         <h1>从一个账号开始，<br />把进步留在这里。</h1>

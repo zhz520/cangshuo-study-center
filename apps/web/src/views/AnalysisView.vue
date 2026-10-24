@@ -354,7 +354,7 @@ const overallAccuracy = computed(() => {
       <section class="diagnosis-layout">
         <div class="ui-card ui-card-pad diagnosis-activity"><div class="ui-row-between"><div><h2 class="ui-section-title">近 7 天活跃</h2><p class="ui-small ui-muted">每天的作答数量</p></div></div><div ref="heatmapChartRef" class="diagnosis-chart chart-activity"></div></div>
         <div class="ui-card ui-card-pad diagnosis-ai">
-          <div class="ui-row-between"><div><h2 class="ui-section-title">AI 学情洞察</h2><p class="ui-small ui-muted">按需生成，不自动消耗额度</p></div><button class="ui-btn ui-btn-dark ui-btn-sm" :disabled="isGeneratingAi" @click="generateAiAnalysis">{{ isGeneratingAi ? '正在分析…' : aiAnalysisResult ? '重新查看' : '生成报告' }}</button></div>
+          <div class="ui-row-between"><div><h2 class="ui-section-title">AI 学情洞察</h2><p class="ui-small ui-muted">按需生成，不自动消耗额度</p></div><button class="ui-btn ui-btn-primary ui-btn-sm" :disabled="isGeneratingAi" @click="generateAiAnalysis">{{ isGeneratingAi ? '正在分析…' : aiAnalysisResult ? '重新查看' : '生成报告' }}</button></div>
           <div v-if="aiAnalysisResult" class="ai-markdown diagnosis-ai-body" v-html="sanitizeHtml(aiAnalysisResult)"></div>
           <div v-else-if="overallTotalQuestions > 0" class="diagnosis-placeholder"><strong>准备好生成学习建议</strong><span>报告会结合科目、题型和近七天活跃情况。</span></div>
           <div v-else class="diagnosis-placeholder"><strong>数据还不够</strong><span>完成一些练习后再生成诊断报告。</span></div>

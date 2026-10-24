@@ -143,18 +143,34 @@ router.delete('/:id', async (req, res) => {
 // POST /admin/questions/import
 // Body: { major_id, subject_id, questions: [ { type, stem, options, answer, analysis, difficulty, tags } ] }
 router.post('/import', async (req, res) => {
-    const { subject_id, questions } = req.body;
+    const { subject_id, major_id, questions } = req.body;
+    const subjectId = Number(subject_id);
+    const majorId = major_id == null || major_id === '' ? null : Number(major_id);
 
-    if (!subject_id) {
+    if (!Number.isSafeInteger(subjectId) || subjectId <= 0) {
         return res.status(400).json({ error: '缺少科目 ID (subject_id)' });
+    }
+    if (majorId !== null && (!Number.isSafeInteger(majorId) || majorId <= 0)) {
+        return res.status(400).json({ error: '专业 ID 格式不正确' });
     }
     if (!Array.isArray(questions) || questions.length === 0) {
         return res.status(400).json({ error: '题目数据为空或格式不正确，需要 questions 数组' });
+    }
+    if (questions.length > 5000) {
+        return res.status(400).json({ error: '单次最多导入 5000 道题目' });
     }
 
     const connection = await pool.getConnection();
 
     try {
+        const subjectSql = majorId === null
+            ? 'SELECT id FROM subjects WHERE id = ?'
+            : 'SELECT id FROM subjects WHERE id = ? AND major_id = ?';
+        const subjectParams = majorId === null ? [subjectId] : [subjectId, majorId];
+        const [subjects] = await connection.query(subjectSql, subjectParams);
+        if (!subjects.length) {
+            return res.status(400).json({ error: '科目不存在或不属于所选专业' });
+        }
         await connection.beginTransaction();
 
         let successCount = 0;
@@ -186,7 +202,7 @@ router.post('/import', async (req, res) => {
                 const options = q.options;
                 const answer = q.answer;
 
-                await saveQuestion(connection, 'questions', { subject_id, type, difficulty,
+                await saveQuestion(connection, 'questions', { subject_id: subjectId, type, difficulty,
                     tags: JSON.stringify(tags), content, options, answer, analysis });
 
                 successCount++;

@@ -41,11 +41,11 @@ fun StopwatchScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("秒表计时", fontWeight = FontWeight.Bold) },
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
+                title = { Text("秒表计时") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -70,20 +70,20 @@ fun StopwatchScreen(onBack: () -> Unit) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 32.dp),
+                    .padding(vertical = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         text = "$minutes:$seconds",
-                        fontSize = 72.sp,
+                        fontSize = 46.sp,
                         fontWeight = FontWeight.Light,
                         fontFamily = FontFamily.Monospace,
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = ".$milliseconds",
-                        fontSize = 36.sp,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Light,
                         fontFamily = FontFamily.Monospace,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
@@ -108,8 +108,8 @@ fun StopwatchScreen(onBack: () -> Unit) {
                             laps = emptyList()
                         }
                     },
-                    modifier = Modifier.size(72.dp),
-                    shape = CircleShape,
+                    modifier = Modifier.weight(1f).heightIn(min=48.dp),
+                    shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -126,8 +126,8 @@ fun StopwatchScreen(onBack: () -> Unit) {
                 // Primary Play/Pause Button
                 Button(
                     onClick = { isRunning = !isRunning },
-                    modifier = Modifier.size(88.dp),
-                    shape = CircleShape,
+                    modifier = Modifier.weight(1f).padding(start=12.dp).heightIn(min=48.dp),
+                    shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isRunning) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
                         contentColor = if (isRunning) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
@@ -137,7 +137,7 @@ fun StopwatchScreen(onBack: () -> Unit) {
                     Icon(
                         if (isRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = if (isRunning) "Pause" else "Start",
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }

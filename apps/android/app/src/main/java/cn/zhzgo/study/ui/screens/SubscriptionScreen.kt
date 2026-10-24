@@ -51,6 +51,7 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
 
     private val _subscriptionEndDate = MutableStateFlow<String?>(null)
     val subscriptionEndDate = _subscriptionEndDate.asStateFlow()
+    val userRole = prefs.userRole
 
     init {
         viewModelScope.launch { prefs.subscriptionEndDate.collect { _subscriptionEndDate.value = it } }
@@ -94,20 +95,22 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
 }
 
 @Composable
-fun SubscriptionScreen(onBack:()->Unit) {
+fun SubscriptionScreen(onBack:()->Unit,onPersonalize:()->Unit={}) {
     val model:SubscriptionViewModel=viewModel()
     val end by model.subscriptionEndDate.collectAsState()
-    val active=isUserPlus(end)
+    val role by model.userRole.collectAsState(initial=null)
+    val active=role=="admin"||isUserPlus(end)
     var code by remember{mutableStateOf("")}
     var redeem by remember{mutableStateOf(false)}
     var busy by remember{mutableStateOf(false)}
     var message by remember{mutableStateOf<String?>(null)}
     var error by remember{mutableStateOf<String?>(null)}
+    cn.zhzgo.study.ui.components.RefreshOnResume { model.refreshStatus{ok,msg->if(!ok)error=msg} }
     cn.zhzgo.study.ui.components.StudyPage("会员与权益",onBack,actions={TextButton(onClick={if(!busy){busy=true;model.refreshStatus{ok,msg->busy=false;if(ok){message=msg;error=null}else error=msg}}},enabled=!busy){Text("刷新")}}){padding->
         androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(start=20.dp,end=20.dp,bottom=24.dp)) {
             item {
                 Text(if(active)"Plus 已开通" else "为专注学习多一步支持",style=MaterialTheme.typography.headlineMedium)
-                Text(if(active)"到期 ${end.orEmpty().take(10)}" else "按需要选择，保留你的学习节奏。",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=8.dp,bottom=24.dp))
+                Text(if(role=="admin")"管理员学习权益已启用" else if(active)"到期 ${end.orEmpty().take(10)}" else "按需要选择，保留你的学习节奏。",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=8.dp,bottom=24.dp))
                 if(busy)cn.zhzgo.study.ui.components.StudyLoading(Modifier.fillMaxWidth())
                 message?.let{Text(it,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(vertical=12.dp))}
                 error?.let{Text(it,color=MaterialTheme.colorScheme.error,modifier=Modifier.padding(vertical=12.dp))}
@@ -115,6 +118,8 @@ fun SubscriptionScreen(onBack:()->Unit) {
                 cn.zhzgo.study.ui.components.DetailPair("题库练习","免费：每科前 20 题\nPlus：完整练习")
                 cn.zhzgo.study.ui.components.DetailPair("AI 题目讲解","按账号当日可用次数使用")
                 cn.zhzgo.study.ui.components.DetailPair("学习辅助","学情建议与进阶工具")
+                cn.zhzgo.study.ui.components.DetailPair("个性化","专属问候、首页内容与练习反馈")
+                if(active) TextButton(onClick=onPersonalize){Text("设置我的个性化偏好")}
                 Spacer(Modifier.height(24.dp))
                 Text("管理会员",style=MaterialTheme.typography.titleLarge)
                 Text("已有激活码可在此兑换。会员状态同步后自动生效。",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=8.dp,bottom=12.dp))

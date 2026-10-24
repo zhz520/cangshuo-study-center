@@ -268,10 +268,10 @@ fun AppNavigation() {
                 val encoded=URLEncoder.encode(name,StandardCharsets.UTF_8.toString())
                 navController.navigate("question/$id/$encoded")
             },onBank={openTab("study")},onLearning={navController.navigate("learning")},
-                onProfile={openTab("profile")},onFavorites={navController.navigate("favorites")},onSearch={navController.navigate("search")},onExam={navController.navigate("exam_list")},onSchedule={navController.navigate("schedule")})
+                  onProfile={openTab("profile")},onFavorites={navController.navigate("favorites")},onSearch={navController.navigate("search")},onExam={navController.navigate("exam_list")},onSchedule={navController.navigate("schedule")},onLeaderboard={navController.navigate("leaderboard")})
         }
         composable("profile") {
-            ProfileScreen(onSettings={navController.navigate("settings")},onAccount={navController.navigate("account_settings")},
+            ProfileScreen(onSettings={navController.navigate("settings")},onAccount={navController.navigate("account_settings")},onPersonalize={navController.navigate("personalization")},
                 onSubscription={navController.navigate("subscription_plus")},onPublicProfile={navController.navigate("user_profile/me")},onSettingsAction={action->navController.navigate("settings?action=$action")},onScore={navController.navigate("tools/score_query")},
                 onAdmin={
                     val token = if (authState != "loading") authState else ""
@@ -466,8 +466,12 @@ fun AppNavigation() {
             )
         }
 
+        composable("personalization") {
+            PersonalizationScreen(onBack={navController.navigateUp()},onSubscription={navController.navigate("subscription_plus")})
+        }
         composable("subscription_plus") {
             SubscriptionScreen(
+                onPersonalize={navController.navigate("personalization")},
                 onBack = { navController.navigateUp() }
             )
         }

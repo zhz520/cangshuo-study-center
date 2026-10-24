@@ -6,6 +6,7 @@ const root = '/www/wwwroot/study_center';
 require(root + '/node_modules/dotenv').config({ path: root + '/.env' });
 const mysql = require(root + '/node_modules/mysql2/promise');
 const jwt = require(root + '/node_modules/jsonwebtoken');
+const { prepare, protectedPath } = require('./protected-api-client.cjs');
 const checks = [];
 const createdIds = [];
 const base = 'http://127.0.0.1:9898';
@@ -14,11 +15,14 @@ const testIp = '203.0.113.' + crypto.randomInt(2, 254);
 async function request(path, { id, method = 'GET', body, expected = 200 } = {}) {
   const headers = { 'Content-Type': 'application/json', 'X-Forwarded-Proto': 'https', 'X-Forwarded-For': testIp };
   if (id) headers.Authorization = 'Bearer ' + jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '3m' });
+  const transport = id && protectedPath(path) ? prepare(method, path, headers.Authorization) : null;
+  if (transport) Object.assign(headers, transport.headers);
   const response = await fetch(base + path, {
     method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(30000),
   });
   const bytes = Buffer.from(await response.arrayBuffer());
-  const data = response.headers.get('content-type')?.includes('application/json') ? JSON.parse(bytes.toString('utf8')) : null;
+  let data = response.headers.get('content-type')?.includes('application/json') ? JSON.parse(bytes.toString('utf8')) : null;
+  if (transport && response.ok) data = transport.open(data);
   assert.equal(response.status, expected, path + ' returned unexpected HTTP status');
   checks.push({ path, method, status: response.status });
   return { response, bytes, data };

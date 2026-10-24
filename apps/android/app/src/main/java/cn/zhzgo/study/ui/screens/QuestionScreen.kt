@@ -129,7 +129,7 @@ fun QuestionScreen(subjectId:Int,subjectName:String,isFavorites:Boolean=false,is
                 Text(if(currentQuestion.type=="multiple") "选择所有正确选项" else if(uiState.immediateFeedback) "选择后即时反馈" else "提交后显示解析",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(12.dp))
-            QuestionContent(currentQuestion,onImageClick={viewerImageUrl=it})
+            QuestionContent(currentQuestion,onImageClick={viewerImageUrl=it},fontSize=uiState.questionTextSize.sp)
             val options=uiState.parsedOptionsMap[currentQuestion.id] ?: emptyMap()
             val correct=viewModel.normalizeAnswer(currentQuestion.type,currentQuestion.answer)
             when(currentQuestion.type) {
@@ -161,7 +161,8 @@ fun QuestionScreen(subjectId:Int,subjectName:String,isFavorites:Boolean=false,is
             if(uiState.isLoadingMore)cn.zhzgo.study.ui.components.StudyLoading(Modifier.fillMaxWidth().padding(top=16.dp))
         }
         if(showAnswerSheet)ModalBottomSheet(onDismissRequest={showAnswerSheet=false},containerColor=MaterialTheme.colorScheme.surface) {
-            AnswerSheetDrawer(uiState.questions,uiState.currentIndex,uiState.userAnswers,{i->viewModel.jumpToQuestion(i);showAnswerSheet=false},isPlus,FREE_QUESTION_LIMIT,uiState.submittedQuestions,marked.toSet(),uiState.pageOffset,onClose={showAnswerSheet=false})
+            AnswerSheetDrawer(uiState.questions,uiState.currentIndex,uiState.userAnswers,{i->viewModel.jumpToQuestion(i);showAnswerSheet=false},isPlus,FREE_QUESTION_LIMIT,uiState.submittedQuestions,marked.toSet(),uiState.pageOffset,onClose={showAnswerSheet=false},
+                hasMore=!uiState.isLastPage,loadingMore=uiState.isLoadingMore,onLoadMore=viewModel::loadNextPage,onLoadPrevious=viewModel::loadPreviousPage,totalCount=uiState.totalCount)
         }
         if(showFinish)AlertDialog(onDismissRequest={showFinish=false},title={Text("结束本次练习？")},text={Text("本次已加载 ${uiState.questions.size} 题，已答 ${uiState.submittedQuestions.size} 题，未答 ${uiState.questions.size-uiState.submittedQuestions.size} 题。结果仅统计本次加载的题目，进度会保留。")},
             confirmButton={TextButton(onClick={showFinish=false;finish()}){Text("查看本次结果")}},dismissButton={TextButton(onClick={showFinish=false;showAnswerSheet=true}){Text("检查答题卡")}})

@@ -21,8 +21,8 @@ app.use((req, res, next) => {
 app.use(cors({
     origin: ['https://study.zhzgo.cn', 'http://localhost:5174', 'http://localhost:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['X-Question-Access', 'X-Question-Page-Limit', 'X-Question-Preview-Limit', 'X-Question-Has-More', 'Retry-After', 'Content-Disposition']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Study-Key', 'X-Study-Nonce'],
+    exposedHeaders: ['X-Question-Access', 'X-Question-Page-Limit', 'X-Question-Preview-Limit', 'X-Question-Has-More', 'X-Study-Transport', 'Retry-After', 'Content-Disposition']
 }));
 
 // Simple request logger

@@ -24,17 +24,19 @@ fun LeaderboardScreen(onBack:()->Unit,onUserClick:(Int)->Unit) {
     val total by model.totalQuestionsRanking.collectAsState();val accuracy by model.accuracyRanking.collectAsState();val score by model.scoreRanking.collectAsState()
     val currentUser by model.currentUser.collectAsState();val subjects by model.subjects.collectAsState();val subject by model.selectedSubjectId.collectAsState()
     val loading by model.isLoading.collectAsState();val error by model.error.collectAsState()
+    val moreTypes by model.moreTypes.collectAsState()
     var tab by rememberSaveable{mutableIntStateOf(0)};var sheet by remember{mutableStateOf(false)}
-    RefreshOnResume{model.loadSubjects(context);model.loadRankings(context)}
+    RefreshOnResume{model.loadSubjects(context);model.resume(context)}
     val ranking=when(tab){0->total;1->accuracy;else->score}
     val mine=ranking.firstOrNull{it.username==currentUser}
-    StudyPage("学习排行",onBack,actions={TextButton(onClick={sheet=true}){Text(subjects.firstOrNull{it.first==subject}?.second ?: "选择科目")}}){padding->
+    StudyPage("学习排行",onBack,actions={TextButton(onClick={model.loadRankings(context)},enabled=!loading){Text("刷新")};TextButton(onClick={sheet=true}){Text(subjects.firstOrNull{it.first==subject}?.second ?: "选择科目")}}){padding->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(start=20.dp,end=20.dp,bottom=24.dp)) {
             item {
                 LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     items(listOf("刷题数量","正确率","练习分数").withIndex().toList()){(i,label)->FilterChip(tab==i,{tab=i},label={Text(label)})}
                 }
                 Text(mine?.let{"你在当前榜单排名第 ${it.rank} 位"} ?: "当前榜单暂无你的排名记录",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(vertical=16.dp))
+                if(tab==1)Text(if(subject=="all")"累计完成至少 20 题后进入正确率榜" else "本科完成至少 5 题后进入正确率榜",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 if(loading)cn.zhzgo.study.ui.components.StudyLoading(Modifier.fillMaxWidth())
                 error?.let{StateMessage("榜单暂未更新",it,"重试",{model.loadRankings(context)})}
             }
@@ -42,12 +44,16 @@ fun LeaderboardScreen(onBack:()->Unit,onUserClick:(Int)->Unit) {
             items(ranking,key={it.user_id}){user->
                 Row(Modifier.fillMaxWidth().clickable{onUserClick(user.user_id)}.padding(vertical=14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                     Text("${user.rank}",style=MaterialTheme.typography.titleMedium,color=if(user.username==currentUser)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.widthIn(min=24.dp))
-                    user.avatar_icon?.takeIf{it.startsWith("http")}?.let{AsyncImage(it,null,Modifier.size(32.dp).clip(CircleShape))}
-                    Text(user.nickname ?: user.username,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.weight(1f))
+                    MemberAvatar(user.avatar_icon, user.appearance, 40.dp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(user.nickname ?: user.username, style=MaterialTheme.typography.bodyMedium, maxLines=1, overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        MemberLabel(user.appearance)
+                    }
                     Text("${user.score}${when(tab){0->" 题";1->"%";else->" 分"}}",style=MaterialTheme.typography.titleMedium)
                 }
                 HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
             }
+            if(tab in moreTypes)item{TextButton(onClick={model.loadMore(context)},enabled=!loading,modifier=Modifier.fillMaxWidth()){Text(if(loading)"加载中…" else "加载下一页")}}
         }
     }
     if(sheet)ModalBottomSheet(onDismissRequest={sheet=false},containerColor=MaterialTheme.colorScheme.surface) {

@@ -67,6 +67,53 @@ function normalizeAnswer(answerRaw) {
     return matches ? matches.sort() : [];
 }
 
+function parseExcelRow(row) {
+    const typeRaw = String(row['type'] || row['类型'] || row['题目类型'] || '').trim();
+    const content = row['content'] || row['题干'] || row['题目内容'];
+    const optionsRaw = row['options'] || row['选项'];
+    const answerRaw = row['answer'] || row['答案'] || row['正确答案'];
+    const analysis = row['analysis'] || row['解析'] || row['答案解析'] || '';
+    const difficultyRaw = row['difficulty'] || row['难度'];
+    const tagsRaw = row['tags'] || row['标签'];
+    if (!content) throw new Error('题干不能为空');
+
+    let type = 'single';
+    if (typeRaw) {
+        if (typeRaw.includes('单') || typeRaw === 'single') type = 'single';
+        else if (typeRaw.includes('多') || typeRaw === 'multiple') type = 'multiple';
+        else if (typeRaw.includes('判') || typeRaw === 'judge') type = 'judge';
+        else if (typeRaw.includes('填') || typeRaw === 'fill') type = 'fill';
+    }
+
+    let options = {};
+    if (type === 'judge') options = { A: '正确', B: '错误' };
+    else if (type !== 'fill') options = normalizeOptions(optionsRaw);
+
+    let answer = [];
+    if (type === 'fill') answer = answerRaw ? answerRaw.toString() : '';
+    else if (type === 'judge') {
+        const value = answerRaw ? answerRaw.toString().trim() : '';
+        if (['正确', '对', '√', 'TRUE', 'YES', 'A'].includes(value.toUpperCase())) answer = ['A'];
+        else if (['错误', '错', '×', 'FALSE', 'NO', 'B'].includes(value.toUpperCase())) answer = ['B'];
+        else answer = normalizeAnswer(value);
+    } else answer = normalizeAnswer(answerRaw);
+
+    let difficulty = 1;
+    if (difficultyRaw) {
+        const text = String(difficultyRaw);
+        const value = parseInt(text);
+        if ([1, 2, 3].includes(value)) difficulty = value;
+        else if (text.includes('中')) difficulty = 2;
+        else if (text.includes('难')) difficulty = 3;
+    }
+
+    let tags = [];
+    if (tagsRaw && typeof tagsRaw === 'string') {
+        tags = tagsRaw.split(/[,，、]/).map(tag => tag.trim()).filter(Boolean);
+    }
+    return { type, content, options, answer, analysis, difficulty, tags };
+}
+
 // Import Excel endpoint
 router.post('/excel', upload.single('file'), async (req, res) => {
     if (!req.file) {
@@ -74,13 +121,22 @@ router.post('/excel', upload.single('file'), async (req, res) => {
     }
 
     const { subject_id, major_id } = req.body;
-    if (!subject_id || !major_id) {
-        return res.status(400).json({ error: 'Subject and Major IDs are required' });
+    const subjectId = Number(subject_id);
+    const majorId = Number(major_id);
+    if (!Number.isSafeInteger(subjectId) || subjectId <= 0 || !Number.isSafeInteger(majorId) || majorId <= 0) {
+        return res.status(400).json({ error: '请选择有效的专业和科目' });
     }
 
     const connection = await pool.getConnection();
 
     try {
+        const [subjects] = await connection.query(
+            'SELECT id FROM subjects WHERE id = ? AND major_id = ?',
+            [subjectId, majorId],
+        );
+        if (!subjects.length) {
+            return res.status(400).json({ error: '科目不属于所选专业，请重新选择' });
+        }
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
@@ -88,6 +144,9 @@ router.post('/excel', upload.single('file'), async (req, res) => {
 
         if (data.length === 0) {
              return res.status(400).json({ error: 'Excel file is empty' });
+        }
+        if (data.length > 5000) {
+             return res.status(400).json({ error: '单次最多导入 5000 道题目' });
         }
 
         await connection.beginTransaction();
@@ -100,69 +159,10 @@ router.post('/excel', upload.single('file'), async (req, res) => {
             const rowNum = i + 2; // +2 because header is 1, and 0-indexed
 
             try {
-                // Map fields (Support English and Chinese headers)
-                const typeRaw = row['type'] || row['类型'] || row['题目类型'];
-                const content = row['content'] || row['题干'] || row['题目内容'];
-                const optionsRaw = row['options'] || row['选项'];
-                const answerRaw = row['answer'] || row['答案'] || row['正确答案'];
-                const analysis = row['analysis'] || row['解析'] || row['答案解析'] || '';
-                const difficultyRaw = row['difficulty'] || row['难度'];
-                const tagsRaw = row['tags'] || row['标签'];
-
-                if (!content) throw new Error('Existing Question content is empty');
-
-                // Normalize Type
-                let type = 'single';
-                if (typeRaw) {
-                    if (typeRaw.includes('单') || typeRaw === 'single') type = 'single';
-                    else if (typeRaw.includes('多') || typeRaw === 'multiple') type = 'multiple';
-                    else if (typeRaw.includes('判') || typeRaw === 'judge') type = 'judge';
-                    else if (typeRaw.includes('填') || typeRaw === 'fill') type = 'fill';
-                }
-
-                // Normalize Options
-                let options = {};
-                // If judge, force options
-                if (type === 'judge') {
-                    options = { A: '正确', B: '错误' };
-                } else if (type !== 'fill') {
-                     options = normalizeOptions(optionsRaw);
-                }
-
-                // Normalize Answer
-                let answer = [];
-                if (type === 'fill') {
-                    answer = answerRaw ? answerRaw.toString() : ''; // Keep raw string for fill
-                } else if (type === 'judge') {
-                     // Handle True/False, Yes/No, Correct/Incorrect
-                     const a = answerRaw ? answerRaw.toString().trim() : '';
-                     if (['正确', '对', '√', 'TRUE', 'YES', 'A'].includes(a.toUpperCase())) answer = ['A'];
-                     else if (['错误', '错', '×', 'FALSE', 'NO', 'B'].includes(a.toUpperCase())) answer = ['B'];
-                     else answer = normalizeAnswer(a);
-                } else {
-                    answer = normalizeAnswer(answerRaw);
-                }
-
-                // Normalize Difficulty
-                let difficulty = 1;
-                if (difficultyRaw) {
-                    const d = parseInt(difficultyRaw);
-                    if ([1, 2, 3].includes(d)) difficulty = d;
-                    else if (difficultyRaw.includes('中')) difficulty = 2;
-                    else if (difficultyRaw.includes('难')) difficulty = 3;
-                }
-
-                // Normalize Tags
-                let tags = [];
-                if (tagsRaw) {
-                    if (typeof tagsRaw === 'string') {
-                        tags = tagsRaw.split(/[,，、]/).map(t => t.trim()).filter(t => t);
-                    }
-                }
-
-                await saveQuestion(connection, 'questions', { subject_id, type, difficulty,
-                    tags: JSON.stringify(tags), content, options: JSON.stringify(options),
-                    answer: Array.isArray(answer) ? JSON.stringify(answer) : answer, analysis });
+                const record = parseExcelRow(row);
+                await saveQuestion(connection, 'questions', { subject_id: subjectId, ...record,
+                    tags: JSON.stringify(record.tags), options: JSON.stringify(record.options),
+                    answer: Array.isArray(record.answer) ? JSON.stringify(record.answer) : record.answer });
 
                 successCount++;
 
@@ -174,8 +174,10 @@ router.post('/excel', upload.single('file'), async (req, res) => {
         await connection.commit();
 
         res.json({
-            message: `Import completed. ${successCount} imported.`,
+            message: `导入完成，成功 ${successCount} 道题目`,
             successCount,
+            failureCount: errors.length,
+            totalCount: data.length,
             errors: errors.length > 0 ? errors : undefined
         });
 
@@ -188,3 +190,4 @@ router.post('/excel', upload.single('file'), async (req, res) => {
 });
 
 module.exports = router;
+module.exports.parseExcelRow = parseExcelRow;

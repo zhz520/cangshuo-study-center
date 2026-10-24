@@ -59,15 +59,15 @@ fun VideoParserScreen(onBack: () -> Unit) {
     val showVipBarrier by viewModel.showVipBarrier.collectAsState()
 
     // Explicit colors to avoid any theme-inherited pink
-    val backgroundColor = Color.White
-    val surfaceColor = Color(0xFFF7F7F7)
-    val accentColor = Color.Black
-    val textColor = Color(0xFF222222)
-    val secondaryTextColor = Color(0xFF666666)
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val surfaceColor = MaterialTheme.colorScheme.surfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val secondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
                 title = { Text("视频解析", fontWeight = FontWeight.Bold, color = accentColor) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { admin } from '../../api';
 import Toast from '../../components/ui/Toast.vue';
+import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
 
 const toast = ref(null);
 const loading = ref(true);
@@ -96,12 +97,10 @@ onMounted(load);
 </script>
 
 <template>
-  <div class="ui-page">
-    <header class="ui-page-head">
+  <div class="admin-workspace ui-page admin-stack">
+    <header class="integration-heading">
       <div>
-        <p class="ui-eyebrow">系统配置</p>
-        <h1 class="ui-title">第三方服务</h1>
-        <p class="ui-subtitle">配置极验人机验证与 AI 模型接口。密钥只保存在服务端，接口不会返回明文。</p>
+        <AdminPageHeading title="第三方服务" description="配置极验人机验证与 AI 模型接口。密钥只保存在服务端，接口不会返回明文。" />
       </div>
       <button class="ui-btn ui-btn-primary" :disabled="saving || loading" @click="save">{{ saving ? '保存中…' : '保存配置' }}</button>
     </header>
@@ -186,6 +185,7 @@ onMounted(load);
 </template>
 
 <style scoped>
+.integration-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding-bottom:18px; margin-bottom:16px; border-bottom:1px solid var(--border); }
 .integration-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .integration-fields { display: grid; gap: 13px; margin-top: 18px; }
 .integration-models { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
@@ -196,5 +196,6 @@ onMounted(load);
 .integration-test .is-ok { color: var(--success); }
 .integration-test .is-error { color: var(--danger); }
 @media (max-width: 900px) { .integration-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .integration-heading { align-items:flex-start; flex-direction:column; } }
 @media (max-width: 560px) { .integration-models { grid-template-columns: 1fr; } }
 </style>

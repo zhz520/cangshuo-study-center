@@ -7,6 +7,7 @@ const SECRET_KEY = require("../config/security").jwtConfig().access;
 
 const { verifyToken } = require("../middleware/authMiddleware");
 const { aiRequest } = require("../services/integrationSettings");
+const { dayKey, consecutiveDays } = require('../services/studyStats');
 const { rateLimit, reserveAi, sendError } = require("../services/securityLimits");
 const { assertQuestion } = require("../services/questionAccess");
 const { sendPushNotification } = require("../services/notificationService");
@@ -248,7 +249,7 @@ router.get("/user-stats", verifyToken, async (req, res) => {
         COUNT(DISTINCT DATE(updated_at)) as active_days
       FROM user_progress up
       JOIN questions q ON up.question_id = q.id
-      WHERE up.user_id = ? AND q.is_active = 1`,
+      WHERE up.user_id = ? AND up.is_deleted = FALSE AND q.is_active = 1`,
       [req.userId],
     );
     const stats = rows[0] || { total: 0, correct: 0, active_days: 0 };
@@ -264,11 +265,27 @@ router.get("/user-stats", verifyToken, async (req, res) => {
   }
 });
 
+// Public presentation is derived from live membership; client-supplied VIP flags are never stored.
+router.get('/appearance', verifyToken, async (req, res) => {
+  try {
+    res.set('Cache-Control', 'private, no-store');
+    const [appearance] = await require('../services/memberAppearance').forUsers([req.account]);
+    res.json(appearance);
+  } catch { res.status(503).json({ error: '暂时无法读取个性装扮，请重试' }); }
+});
+router.put('/appearance', verifyToken, async (req, res) => {
+  try {
+    res.set('Cache-Control', 'private, no-store');
+    res.json(await require('../services/memberAppearance').save(req.account, req.body));
+  } catch (error) { res.status(error.status || 503).json({ error: error.status ? error.message : '装扮保存失败，请重试' }); }
+});
+
 // Get Leaderboard (by Total Questions or Accuracy)
 router.get("/leaderboard", verifyToken, async (req, res) => {
   const { type, subject_id, page = 1 } = req.query; // 'total' or 'accuracy'
-  const limit = parseInt(req.query.limit) || 50;
-  const offset = (parseInt(page) - 1) * limit;
+  let limit, offset;
+  try { ({ limit, offset } = require('../services/questionAccess').pageOptions(req.query)); }
+  catch { return res.status(400).json({ error: '分页参数无效' }); }
 
   try {
     let query = "";
@@ -276,7 +293,7 @@ router.get("/leaderboard", verifyToken, async (req, res) => {
 
     // Build subject filter and question join clause if subject_id is specified
     let subjectJoin = "JOIN questions q ON up.question_id = q.id";
-    let subjectFilter = "AND q.is_active = 1";
+    let subjectFilter = "AND q.is_active = 1 AND up.is_deleted = FALSE";
     if (subject_id && subject_id !== "all") {
       subjectFilter += " AND q.subject_id = ?";
       params.push(subject_id);
@@ -294,6 +311,8 @@ router.get("/leaderboard", verifyToken, async (req, res) => {
           COUNT(*) as total_questions,
           SUM(up.is_correct) as correct_questions,
           MAX(u.subscription_end_date) as subscription_end_date,
+          MAX(u.role) as role,
+          (MAX(u.subscription_end_date) > NOW()) as has_subscription,
           ROUND((SUM(up.is_correct) / COUNT(*)) * 100) as score
         FROM user_progress up
         JOIN users u ON up.user_id = u.id
@@ -301,7 +320,7 @@ router.get("/leaderboard", verifyToken, async (req, res) => {
         WHERE 1=1 ${subjectFilter}
         GROUP BY up.user_id
         HAVING total_questions >= ${minQuestions}
-        ORDER BY score DESC, total_questions DESC
+        ORDER BY score DESC, total_questions DESC, up.user_id ASC
         LIMIT ? OFFSET ?
       `;
     } else if (type === "score") {
@@ -313,6 +332,8 @@ router.get("/leaderboard", verifyToken, async (req, res) => {
           MAX(u.nickname) as nickname,
           MAX(u.avatar_icon) as avatar_icon,
           MAX(u.subscription_end_date) as subscription_end_date,
+          MAX(u.role) as role,
+          (MAX(u.subscription_end_date) > NOW()) as has_subscription,
           SUM(
             CASE
               WHEN q.type = 'single' AND up.is_correct = 1 THEN 3
@@ -326,7 +347,7 @@ router.get("/leaderboard", verifyToken, async (req, res) => {
         JOIN questions q ON up.question_id = q.id
         WHERE q.is_active = 1 ${subjectFilter.replace("AND q.is_active = 1", "")}
         GROUP BY up.user_id
-        ORDER BY score DESC
+        ORDER BY score DESC, up.user_id ASC
         LIMIT ? OFFSET ?
       `;
     } else {
@@ -338,13 +359,15 @@ router.get("/leaderboard", verifyToken, async (req, res) => {
           MAX(u.nickname) as nickname,
           MAX(u.avatar_icon) as avatar_icon,
           MAX(u.subscription_end_date) as subscription_end_date,
+          MAX(u.role) as role,
+          (MAX(u.subscription_end_date) > NOW()) as has_subscription,
           COUNT(*) as score
         FROM user_progress up
         JOIN users u ON up.user_id = u.id
         ${subjectJoin}
         WHERE 1=1 ${subjectFilter}
         GROUP BY up.user_id
-        ORDER BY score DESC
+        ORDER BY score DESC, up.user_id ASC
         LIMIT ? OFFSET ?
       `;
     }
@@ -355,12 +378,16 @@ router.get("/leaderboard", verifyToken, async (req, res) => {
     const [rows] = await pool.query(query, params);
 
     // Format response to ensure safe naming and structure for Android Model
+    let appearances;
+    try { appearances = await require('../services/memberAppearance').forUsers(rows); }
+    catch { appearances = rows.map(row => require('../services/memberAppearance').presentation(row)); }
     const leaderboard = rows.map((row, index) => ({
       rank: offset + index + 1,
       user_id: row.user_id,
       username: row.username,
       nickname: row.nickname,
       avatar_icon: row.avatar_icon,
+      appearance: appearances[index],
       subscription_end_date: row.subscription_end_date,
       score: parseInt(row.score) || 0,
     }));
@@ -382,7 +409,7 @@ router.get("/detailed-stats", verifyToken, async (req, res) => {
        FROM user_progress up
        JOIN questions q ON up.question_id = q.id
        JOIN subjects s ON q.subject_id = s.id
-       WHERE up.user_id = ? AND q.is_active = 1
+       WHERE up.user_id = ? AND up.is_deleted = FALSE AND q.is_active = 1
        GROUP BY s.id, s.name
        ORDER BY total DESC
        LIMIT 10`,
@@ -396,46 +423,34 @@ router.get("/detailed-stats", verifyToken, async (req, res) => {
          SUM(up.is_correct) as correct
        FROM user_progress up
        JOIN questions q ON up.question_id = q.id
-       WHERE up.user_id = ? AND q.is_active = 1
+       WHERE up.user_id = ? AND up.is_deleted = FALSE AND q.is_active = 1
        GROUP BY q.type`,
       [req.userId],
     );
 
     // 3. Last 7 days activity heatmap
     const [weekRows] = await pool.query(
-      `SELECT DATE(updated_at) as day, COUNT(*) as count
+      `SELECT DATE_FORMAT(up.updated_at, '%Y-%m-%d') as day, COUNT(*) as count,
+         SUM(up.is_correct) as correct
        FROM user_progress up
        JOIN questions q ON up.question_id = q.id
-       WHERE up.user_id = ? AND up.updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND q.is_active = 1
-       GROUP BY DATE(updated_at)
+       WHERE up.user_id = ? AND up.is_deleted = FALSE AND up.updated_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND q.is_active = 1
+       GROUP BY day
        ORDER BY day ASC`,
       [req.userId],
     );
 
     // 4. Streak (consecutive active days ending today)
     const [streakRows] = await pool.query(
-      `SELECT DISTINCT DATE(updated_at) as day
+      `SELECT DISTINCT DATE_FORMAT(up.updated_at, '%Y-%m-%d') as day
        FROM user_progress up
        JOIN questions q ON up.question_id = q.id
-       WHERE up.user_id = ? AND q.is_active = 1
+       WHERE up.user_id = ? AND up.is_deleted = FALSE AND q.is_active = 1
        ORDER BY day DESC
        LIMIT 60`,
       [req.userId],
     );
-    let streak = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    for (let i = 0; i < streakRows.length; i++) {
-      const d = new Date(streakRows[i].day);
-      d.setHours(0, 0, 0, 0);
-      const expected = new Date(today);
-      expected.setDate(today.getDate() - i);
-      if (d.getTime() === expected.getTime()) {
-        streak++;
-      } else {
-        break;
-      }
-    }
+    const streak = consecutiveDays(streakRows.map(row => row.day));
 
     const subjectStats = subjectRows.map((r) => ({
       subject_id: r.id,
@@ -457,7 +472,11 @@ router.get("/detailed-stats", verifyToken, async (req, res) => {
       count: Number(r.count),
     }));
 
-    res.json({ subjectStats, typeStats, weekHeatmap, streak });
+    const today = weekRows.find(row => row.day === dayKey());
+    const total = Number(today?.count || 0);
+    res.json({ subjectStats, typeStats, weekHeatmap, streak,
+      today: { day: dayKey(), total, correct: Number(today?.correct || 0),
+        accuracy: total ? Math.round(Number(today.correct || 0) / total * 100) : 0 } });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1353,6 +1372,9 @@ router.get(
       if (userRows.length === 0)
         return res.status(404).json({ error: "用户不存在" });
       const user = userRows[0];
+      let appearance;
+      try { [appearance] = await require('../services/memberAppearance').forUsers([user]); }
+      catch { appearance = require('../services/memberAppearance').presentation(user); }
 
       // User's Articles
       const [articles] = await pool.query(
@@ -1375,6 +1397,7 @@ router.get(
           id: user.id,
           username: user.username,
           avatar_icon: user.avatar_icon,
+          appearance,
           nickname: user.nickname,
           slogan: user.slogan,
           role: user.role,
@@ -1585,7 +1608,7 @@ router.get("/exams", verifyToken, async (req, res) => {
 });
 
 // GET /api/data/exams/records — 我的考试记录
-router.get("/exams/records", verifyToken, async (req, res) => {
+router.get("/exams/records", verifyToken, rateLimit('exam-history-user', 20), async (req, res) => {
   try {
     const [records] = await pool.query(`
       SELECT er.*, er.start_time as started_at, er.end_time as finished_at, ep.title as paper_title, ep.description as paper_description
@@ -1619,7 +1642,7 @@ router.get("/exams/records", verifyToken, async (req, res) => {
 });
 
 // POST /api/data/exams/:paperId/start — 开始考试
-router.post("/exams/:paperId/start", verifyToken, async (req, res) => {
+router.post("/exams/:paperId/start", verifyToken, rateLimit('exam-start-user', 5), async (req, res) => {
   const paperId = parseInt(req.params.paperId);
   console.log(`[Exam Start] User ${req.userId} starting paper ${paperId}`);
 
@@ -1691,7 +1714,7 @@ router.post("/exams/:paperId/start", verifyToken, async (req, res) => {
         index: q.question_index,
         type: q.type,
         content: q.content,
-        options: options,
+        options: require('../services/questionDelivery').hideNestedAnswers(options, q.type),
         score: q.score
       };
     });

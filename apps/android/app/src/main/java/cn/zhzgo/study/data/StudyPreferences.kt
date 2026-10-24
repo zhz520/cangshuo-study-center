@@ -12,7 +12,9 @@ data class StudyMemory(
     val recent: List<RecentSubject> = emptyList(), val pinned: Set<Int> = emptySet(),
     val mastered: Set<Int> = emptySet(), val session: StudySession? = null,
     val dailyGoal: Int = 30, val drafts: Map<Int,String> = emptyMap(),
-    val activity: Map<String,DailyPractice> = emptyMap()
+    val activity: Map<String,DailyPractice> = emptyMap(),
+    val greeting: String = "", val showDailyQuote: Boolean = true, val immediateFeedback: Boolean = true,
+    val questionTextSize: Int = 18
 )
 /** Only navigation metadata and personal review marks. Never stores question stems or solutions. */
 class StudyPreferences(private val context: Context) {
@@ -23,7 +25,13 @@ class StudyPreferences(private val context: Context) {
         return stringPreferencesKey("study_workspace_$scope")
     }
     private fun read(p: Preferences): StudyMemory = runCatching {
-        p[key(p)]?.let { gson.fromJson(it, StudyMemory::class.java) }
+        p[key(p)]?.let { raw ->
+            val merged=gson.toJsonTree(StudyMemory()).asJsonObject
+            gson.fromJson(raw,com.google.gson.JsonObject::class.java).entrySet().forEach { (name,value) ->
+                if(!value.isJsonNull)merged.add(name,value)
+            }
+            gson.fromJson(merged, StudyMemory::class.java)
+        }
     }.getOrNull() ?: StudyMemory()
     val memory = context.dataStore.data.map(::read)
     private suspend fun update(transform: (StudyMemory) -> StudyMemory) {
@@ -35,6 +43,10 @@ class StudyPreferences(private val context: Context) {
     suspend fun pin(id: Int) = update { it.copy(pinned=if(id in it.pinned) it.pinned-id else it.pinned+id) }
     suspend fun mark(ids: Set<Int>, mastered: Boolean) = update { it.copy(mastered=if(mastered) it.mastered+ids else it.mastered-ids) }
     suspend fun goal(value: Int) = update { it.copy(dailyGoal=value.coerceIn(5,200)) }
+    suspend fun personalize(greeting:String,quote:Boolean,feedback:Boolean,goal:Int,textSize:Int) = update {
+        it.copy(greeting=greeting.trim().take(40),showDailyQuote=quote,immediateFeedback=feedback,
+            dailyGoal=goal.coerceIn(5,200),questionTextSize=textSize.coerceIn(16,22))
+    }
     suspend fun checkpoint(session: StudySession) = update { it.copy(session=session) }
     suspend fun draft(id: Int, answer: String) = update { old ->
         old.copy(drafts=(old.drafts + (id to answer)).entries.toList().takeLast(100).associate{it.toPair()})
@@ -48,13 +60,13 @@ class StudyPreferences(private val context: Context) {
         if(seconds<=0)return
         context.dataStore.edit { p ->
             if(p[stringPreferencesKey("user_info")]!=account)return@edit
-            val memory=read(p);val date=java.time.LocalDate.now().toString()
+            val memory=read(p);val date=StudyCalendar.today().toString()
             val day=memory.activity[date] ?: DailyPractice()
             p[key(p)]=gson.toJson(memory.copy(activity=recentActivity(memory.activity+(date to day.copy(seconds=day.seconds+seconds)))))
         }
     }
     suspend fun recordOutcomes(outcomes:Map<String,Boolean>) = update { memory ->
-        val date=java.time.LocalDate.now().toString();val day=memory.activity[date] ?: DailyPractice()
+        val date=StudyCalendar.today().toString();val day=memory.activity[date] ?: DailyPractice()
         // Keep the first answer to each question per day; this is a personal trend, never a ranking score.
         val merged=outcomes+day.outcomes
         memory.copy(activity=recentActivity(memory.activity+(date to day.copy(outcomes=merged))))

@@ -95,7 +95,7 @@ fun BindQQScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
                 title = { Text("绑定已有账号") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

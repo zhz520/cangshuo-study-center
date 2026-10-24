@@ -46,10 +46,10 @@ fun ImageCompressScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("图片压缩缩放", fontWeight = FontWeight.Bold) },
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
+                title = { Text("图片压缩缩放") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
                 },
                 actions = {
                     if (uiState.previewBitmap != null) {
@@ -116,7 +116,7 @@ fun ImageCompressScreen(
                     modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()), 
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+                    OutlinedCard(shape = RoundedCornerShape(16.dp)) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("缩放图片", fontWeight = FontWeight.SemiBold)
@@ -135,7 +135,7 @@ fun ImageCompressScreen(
                             ) { Text("预览缩放效果") }
                         }
                     }
-                    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+                    OutlinedCard(shape = RoundedCornerShape(16.dp)) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text("导出格式", fontWeight = FontWeight.SemiBold)
                             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.background).padding(4.dp)) {

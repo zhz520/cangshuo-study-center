@@ -1,4 +1,5 @@
 <script setup>
+import BrandLogo from '../components/BrandLogo.vue';
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { auth } from "../api";
@@ -80,7 +81,7 @@ const handleLogin = async () => {
 <template>
   <div class="auth-page">
     <section class="auth-brand-panel">
-      <RouterLink to="/" class="web-brand"><span class="web-brand-mark">烁</span><span>烁学</span></RouterLink>
+      <RouterLink to="/" class="web-brand"><BrandLogo /><span>烁学</span></RouterLink>
       <div class="auth-brand-copy">
         <span class="ui-eyebrow">专注每一次进步</span>
         <h1>保持专注，<br />也保持节奏。</h1>

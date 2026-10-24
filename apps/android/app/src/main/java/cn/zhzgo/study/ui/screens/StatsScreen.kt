@@ -139,7 +139,7 @@ fun StatsScreen(onBack:()->Unit,viewModel:StatsViewModel=viewModel(),root:Boolea
     val prefs=remember{StudyPreferences(context)}
     val memory by prefs.memory.collectAsState(initial=StudyMemory())
     RefreshOnResume(viewModel::load)
-    val recentDays=(6 downTo 0).map{LocalDate.now().minusDays(it.toLong()).toString()}
+    val recentDays=(6 downTo 0).map{StudyCalendar.today().minusDays(it.toLong()).toString()}
     val seconds=recentDays.sumOf{memory.activity[it]?.seconds ?: 0L}
     val wrong=progress?.filter{it.is_correct==0}
     val mastered=wrong?.count{it.question_id in memory.mastered}
@@ -203,7 +203,7 @@ fun StatsScreen(onBack:()->Unit,viewModel:StatsViewModel=viewModel(),root:Boolea
 }
 @Composable
 private fun ActivityBars(data:List<WeekDay>) {
-    val days=(6 downTo 0).map{LocalDate.now().minusDays(it.toLong())}
+    val days=(6 downTo 0).map{StudyCalendar.today().minusDays(it.toLong())}
     val counts=days.map{day->data.firstOrNull{it.day.take(10)==day.toString()}?.count ?: 0}
     val maximum=counts.maxOrNull()?.coerceAtLeast(1) ?: 1
     Row(Modifier.fillMaxWidth().semantics{contentDescription=days.zip(counts).joinToString{(date,count)->"$date，$count 题"}},horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.Bottom) {

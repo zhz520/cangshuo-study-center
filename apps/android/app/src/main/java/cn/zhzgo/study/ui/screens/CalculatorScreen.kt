@@ -83,10 +83,10 @@ fun CalculatorScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("计算器", fontWeight = FontWeight.SemiBold) },
+            cn.zhzgo.study.ui.components.StudyToolTopBar(
+                title = { Text("计算器") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = androidx.compose.ui.graphics.Color.Transparent
@@ -98,14 +98,14 @@ fun CalculatorScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.Bottom
         ) {
             // Display Area
             Text(
                 text = display,
                 style = MaterialTheme.typography.displayLarge.copy(
-                    fontSize = if (display.length > 8) 48.sp else 64.sp,
+                    fontSize = if (display.length > 8) 32.sp else 44.sp,
                     fontWeight = FontWeight.Light
                 ),
                 textAlign = TextAlign.End,
@@ -127,8 +127,8 @@ fun CalculatorScreen(onBack: () -> Unit) {
 
             buttons.forEachIndexed { rowIndex, row ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     row.forEachIndexed { colIndex, btn ->
                         if (rowIndex == 4 && colIndex == 3) return@forEachIndexed // Skip the extra "="
@@ -158,8 +158,8 @@ fun CalculatorScreen(onBack: () -> Unit) {
 
                         Box(
                             modifier = modifier
-                                .aspectRatio(if (modifier == Modifier.weight(2.1f)) 2.1f else 1f)
-                                .clip(if (modifier == Modifier.weight(2.1f)) RoundedCornerShape(percent = 50) else CircleShape)
+                                .heightIn(min=48.dp)
+                                .clip(MaterialTheme.shapes.medium)
                                 .background(containerColor)
                                 .clickable {
                                     when (btn) {
@@ -174,7 +174,7 @@ fun CalculatorScreen(onBack: () -> Unit) {
                         ) {
                             Text(
                                 text = btn,
-                                fontSize = 32.sp,
+                                fontSize = 24.sp,
                                 fontWeight = if (isOp || isAction) FontWeight.Medium else FontWeight.Normal,
                                 color = contentColor
                             )

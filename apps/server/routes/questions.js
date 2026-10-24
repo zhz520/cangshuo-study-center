@@ -6,6 +6,8 @@ const { rateLimit, chargeQuestions, sendError } = require('../services/securityL
 const { keywordFilter } = require('../services/questionStorage');
 const { normalizeSearch } = require('../utils/questionCrypto');
 const { scoreAnswer } = require('../utils/scoreAnswer');
+const { practiceQuestion, verifyReadTicket } = require('../services/questionDelivery');
+const { unpackJson } = require('../utils/questionFormat');
 const router = express.Router();
 const columns = 'q.id, q.subject_id, q.type, q.difficulty, q.tags, q.content, q.options, q.answer, q.analysis, s.name AS subject_name';
 const joins = 'JOIN subjects s ON s.id = q.subject_id';
@@ -24,7 +26,7 @@ async function sendRows(req, res, rows, limit) {
     await chargeQuestions(req, rows.length);
     questionHeaders(req, res);
     res.set('X-Question-Has-More', String(rows.length === limit));
-    return res.json(rows);
+    return res.json(rows.map(row => row.content !== undefined ? practiceQuestion(req, row) : row));
 }
 
 function get(path, handler) {
@@ -76,6 +78,18 @@ get('/questions/:id', async (req, res) => {
     const [rows] = await pool.query(`SELECT ${columns} FROM questions q ${joins} WHERE q.id = ? AND ${filter.sql}`, [integer(req.params.id, '题目编号'), ...filter.params]);
     if (!rows.length) return res.status(403).json({ error: '题目不可访问，请检查题库权限或会员状态', code: 'QUESTION_ACCESS_DENIED' });
     await chargeQuestions(req, 1);
+    questionHeaders(req, res);
+    res.json(practiceQuestion(req, rows[0]));
+});
+
+get('/questions/:id/review', async (req, res) => {
+    const id = integer(req.params.id, '题目编号');
+    await assertQuestion(pool, req, id);
+    verifyReadTicket(req, id, req.query.answer_token);
+    const [progress] = await pool.query('SELECT question_id FROM user_progress WHERE user_id = ? AND question_id = ? AND is_deleted = FALSE', [req.userId, id]);
+    if (!progress.length) throw Object.assign(new Error('请先作答本题再查看解析'), { status: 403, code: 'QUESTION_ANSWER_REQUIRED' });
+    await chargeQuestions(req, 1);
+    const [rows] = await pool.query('SELECT id, type, content, options, answer, analysis FROM questions WHERE id = ?', [id]);
     questionHeaders(req, res);
     res.json(rows[0]);
 });
@@ -133,14 +147,19 @@ router.post('/favorites', ...protectedRead, async (req, res) => {
 router.post('/progress', ...protectedRead, async (req, res) => {
     try {
         await assertQuestion(pool, req, req.body.question_id);
+        verifyReadTicket(req, req.body.question_id, req.body.answer_token);
+        await require('../services/securityLimits').reserve('question-grade-user', req.userId, 1, 30, 60);
         const [rows] = await pool.query('SELECT id, type, content, options, answer, analysis FROM questions WHERE id = ?', [req.body.question_id]);
-        const answer = req.body.answer;
+        const answer = unpackJson(req.body.answer);
         if (Buffer.byteLength(JSON.stringify(answer ?? null)) > 20000) throw Object.assign(new Error('作答内容过长'), { status: 400 });
+        if (answer == null || answer === '' || (typeof answer === 'object' && !Object.keys(answer).length)) throw Object.assign(new Error('请先填写答案'), { status: 400 });
         const correct = scoreAnswer(rows[0], answer);
-        await pool.query(`INSERT INTO user_progress (user_id, question_id, is_correct, answer, is_deleted) VALUES (?, ?, ?, ?, FALSE)
-            ON DUPLICATE KEY UPDATE is_correct = VALUES(is_correct), answer = VALUES(answer), is_deleted = FALSE`,
+        await chargeQuestions(req, 1);
+        if (req.body.review_only !== true) await pool.query(`INSERT INTO user_progress (user_id, question_id, is_correct, answer, is_deleted) VALUES (?, ?, ?, ?, FALSE)
+            ON DUPLICATE KEY UPDATE is_correct = VALUES(is_correct), answer = VALUES(answer), is_deleted = FALSE, updated_at = CURRENT_TIMESTAMP`,
             [req.userId, rows[0].id, correct, typeof answer === 'string' ? answer : JSON.stringify(answer)]);
-        res.json({ message: 'Progress saved', is_correct: correct });
+        questionHeaders(req, res);
+        res.json({ message: 'Progress saved', is_correct: correct, question: rows[0] });
     } catch (error) { sendError(res, error); }
 });
 
@@ -163,7 +182,7 @@ router.post(['/sync', '/progress/batch'], ...protectedRead, async (req, res) => 
             const answer = typeof item.answer === 'string' ? item.answer : JSON.stringify(item.answer ?? null);
             if (Buffer.byteLength(answer) > 20000) throw Object.assign(new Error('作答内容过长'), { status: 400 });
             await connection.query(`INSERT INTO user_progress (user_id, question_id, is_correct, answer, is_deleted) VALUES (?, ?, ?, ?, FALSE)
-                ON DUPLICATE KEY UPDATE is_correct = VALUES(is_correct), answer = VALUES(answer), is_deleted = FALSE`,
+                ON DUPLICATE KEY UPDATE is_correct = VALUES(is_correct), answer = VALUES(answer), is_deleted = FALSE, updated_at = CURRENT_TIMESTAMP`,
                 [req.userId, question.id, scoreAnswer(question, item.answer), answer]);
         }
         await connection.commit();

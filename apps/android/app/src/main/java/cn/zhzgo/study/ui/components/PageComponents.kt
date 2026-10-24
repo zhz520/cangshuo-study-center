@@ -6,6 +6,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.RowScope
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StudyToolTopBar(title:@Composable ()->Unit,navigationIcon:@Composable ()->Unit={},actions:@Composable RowScope.()->Unit={},
+    colors:TopAppBarColors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background)) {
+    Column {
+        TopAppBar(title={ androidx.compose.runtime.CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.titleLarge){title()} },
+            navigationIcon=navigationIcon,actions=actions,colors=colors,expandedHeight=56.dp)
+        HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant.copy(alpha=.5f))
+    }
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyPage(title:String,onBack:(()->Unit)?=null,actions:@Composable RowScope.()->Unit={},

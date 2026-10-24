@@ -116,6 +116,7 @@ object RetrofitClient {
             .addInterceptor(ConnectivityInterceptor(context))
             .addInterceptor(logging)
             .addInterceptor(AuthInterceptor(userPreferences))
+            .addInterceptor(QuestionTransportInterceptor())
             .build()
 
         return Retrofit.Builder()

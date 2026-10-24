@@ -61,28 +61,49 @@ router.post("/", async (req, res) => {
 
 // POST /admin/access-control/batch — 批量授予
 router.post("/batch", async (req, res) => {
+  let connection;
   try {
     const { user_id, major_ids } = req.body;
-    if (!user_id || !Array.isArray(major_ids))
+    const userId = Number(user_id);
+    if (!Number.isSafeInteger(userId) || userId <= 0 || !Array.isArray(major_ids) || major_ids.length > 500)
       return res.status(400).json({ error: "参数错误" });
 
-    // 先清除该用户的所有权限，再重新授予
-    await pool.query("DELETE FROM major_access_control WHERE user_id = ?", [
-      user_id,
-    ]);
+    const ids = [...new Set(major_ids.map(Number))];
+    if (ids.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+      return res.status(400).json({ error: "专业参数无效" });
+    }
 
-    if (major_ids.length > 0) {
-      const values = major_ids.map((mid) => [user_id, mid]);
-      await pool.query(
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    const [[user]] = await connection.query("SELECT id FROM users WHERE id = ?", [userId]);
+    if (!user) {
+      const error = new Error("用户不存在"); error.status = 404; throw error;
+    }
+    if (ids.length > 0) {
+      const [validMajors] = await connection.query("SELECT id FROM majors WHERE id IN (?)", [ids]);
+      if (validMajors.length !== ids.length) {
+        const error = new Error("包含不存在的专业分类"); error.status = 400; throw error;
+      }
+    }
+
+    // Empty list intentionally means no restriction: the account sees all majors.
+    await connection.query("DELETE FROM major_access_control WHERE user_id = ?", [userId]);
+    if (ids.length > 0) {
+      const values = ids.map((mid) => [userId, mid]);
+      await connection.query(
         "INSERT INTO major_access_control (user_id, major_id) VALUES ?",
         [values],
       );
     }
-
-    res.json({ message: "权限更新成功" });
+    await connection.commit();
+    res.json({ message: "权限更新成功", user_id: userId, major_ids: ids });
   } catch (err) {
+    if (connection) await connection.rollback().catch(() => {});
+    if (err.status) return res.status(err.status).json({ error: err.message });
     console.error("批量授权失败:", err);
     res.status(500).json({ error: "服务器错误" });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
