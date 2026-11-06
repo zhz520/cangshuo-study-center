@@ -89,11 +89,10 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="admin-metric-strip">
+    <div class="admin-metric-strip is-three">
       <div class="admin-metric"><span>报错总数</span><strong>{{ pagination.total }}</strong></div>
       <div class="admin-metric"><span>本页显示</span><strong>{{ reports.length }}</strong></div>
-      <div class="admin-metric"><span>每页</span><strong>{{ pagination.limit }}</strong></div>
-      <div class="admin-metric"><span>页码</span><strong>{{ pagination.page }} / {{ pagination.totalPages }}</strong></div>
+      <div class="admin-metric"><span>当前筛选</span><strong class="is-text">{{ filterStatus === 'pending' ? '待处理' : filterStatus === 'resolved' ? '已处理' : filterStatus === 'rejected' ? '已驳回' : '全部状态' }}</strong></div>
     </div>
 
     <!-- Reports Table / Cards -->

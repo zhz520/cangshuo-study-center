@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { data as api, publicApi } from "../api";
 import Toast from "../components/ui/Toast.vue";
+import PageHeader from "../components/ui/PageHeader.vue";
 
 const router = useRouter();
 const username = ref("同学");
@@ -181,20 +182,23 @@ const getDaysLeft = (dateStr) => {
 
 <template>
   <div class="ui-page ui-page-wide home-page">
-    <header class="ui-page-head home-head">
-      <div>
-        <p class="ui-eyebrow">{{ currentDate }} · 学习首页</p>
-        <h1 class="ui-title">{{ greeting }}，{{ username }}</h1>
-        <p class="ui-subtitle">今天从下一道题开始，进度会自动保存。</p>
-      </div>
-      <button type="button" class="home-refresh" aria-label="刷新首页" @click="refreshHome">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 7l2 5M18 15a7 7 0 0 1-11.9 2L4 12"/></svg>
-        <span>刷新</span>
-      </button>
-    </header>
+    <PageHeader :eyebrow="currentDate + ' · 学习首页'" :title="greeting + '，' + username" description="今天从下一道题开始，进度会自动保存。">
+      <template #actions>
+        <button type="button" class="ui-btn ui-btn-outline ui-btn-sm" aria-label="刷新首页" @click="refreshHome">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 7l2 5M18 15a7 7 0 0 1-11.9 2L4 12"/></svg>
+          刷新
+        </button>
+      </template>
+    </PageHeader>
 
-    <section class="home-overview" aria-label="学习概览">
-      <div class="home-continue">
+    <div class="home-metrics" aria-label="学习概览">
+      <div><strong>{{ totalQuestions }}</strong><span>累计作答</span></div>
+      <div><strong>{{ correctRate }}%</strong><span>整体正确率</span></div>
+      <div><strong>{{ majors.length }}</strong><span>可浏览分类</span></div>
+      <div><strong>{{ nearestCountdown ? nearestCountdown.days : '—' }}</strong><span>{{ nearestCountdown ? nearestCountdown.title : '考试倒计时' }}</span></div>
+    </div>
+
+    <section class="home-continue">
         <span class="home-continue-mark" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h5a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H4zM20 4h-5a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h5z"/></svg>
         </span>
@@ -204,17 +208,6 @@ const getDaysLeft = (dateStr) => {
           <p>{{ selectedMajor ? '已选专业，从题库目录继续完成练习。' : '按专业和科目查找，开始今天的学习。' }}</p>
         </div>
         <button type="button" class="ui-btn ui-btn-primary" @click="scrollToSubjects">{{ selectedMajor ? '选择科目' : '浏览题库' }} <span aria-hidden="true">→</span></button>
-      </div>
-
-      <div class="home-summary">
-        <div class="home-summary-head"><strong>学习概览</strong><span>累计数据</span></div>
-        <div class="home-summary-grid">
-          <div><strong>{{ totalQuestions }}</strong><span>累计作答</span></div>
-          <div><strong>{{ correctRate }}%</strong><span>整体正确率</span></div>
-          <div><strong>{{ majors.length }}</strong><span>可浏览分类</span></div>
-          <div><strong>{{ nearestCountdown ? nearestCountdown.days : '—' }}</strong><span>{{ nearestCountdown ? nearestCountdown.title : '考试倒计时' }}</span></div>
-        </div>
-      </div>
     </section>
 
     <nav class="home-tools" aria-label="学习工具">
@@ -396,10 +389,10 @@ const getDaysLeft = (dateStr) => {
 .library-subject-copy small { color:var(--text-quote); font-size:10px; }
 .library-start { flex:0 0 auto; color:var(--text-sub); font-size:11px; }
 .library-subject:hover .library-start { color:var(--primary); }
-.library-guide { display:flex; flex-direction:column; justify-content:center; padding:34px 30px; border-left:1px solid var(--border); background:var(--bg-card); }
+.library-guide { display:flex; flex-direction:column; justify-content:flex-start; padding:26px 28px; border-left:1px solid var(--border); background:var(--bg-card); }
 .library-guide-rule { width:30px; height:2px; margin-bottom:16px; background:var(--primary); border-radius:2px; }
 .library-guide-title { margin:0; color:var(--text-main); font-size:17px; line-height:1.45; font-weight:600; }
-.library-guide-copy { max-width:320px; margin:8px 0 22px; color:var(--text-sub); font-size:12px; line-height:1.7; }
+.library-guide-copy { max-width:320px; margin:8px 0 18px; color:var(--text-sub); font-size:12px; line-height:1.7; }
 .library-guide-points { display:flex; flex-direction:column; gap:0; margin:0; }
 .library-guide-points div { display:flex; align-items:baseline; gap:12px; padding:8px 0; border-top:1px solid var(--border); }
 .library-guide-points dt { color:var(--text-quote); font-size:10px; font-variant-numeric:tabular-nums; }
@@ -412,8 +405,11 @@ const getDaysLeft = (dateStr) => {
 .library-empty-pane { min-height:190px; justify-content:center; }
 .home-refresh { min-height:34px; display:inline-flex; align-items:center; gap:6px; padding:0 9px; border-radius:7px; color:var(--text-sub); font-size:11px; }
 .home-refresh:hover { background:var(--bg-card-highlight); color:var(--text-main); }
-.home-overview { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr); gap:12px; margin-bottom:10px; }
-.home-continue { display:flex; align-items:center; gap:14px; min-height:112px; padding:17px 19px; border:1px solid var(--border); border-radius:12px; background:var(--bg-card); }
+.home-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; margin:18px 0 12px; overflow:hidden; border:1px solid var(--border); border-radius:12px; background:var(--border); }
+.home-metrics > div { display:flex; flex-direction:column; gap:3px; min-width:0; padding:14px 16px; background:var(--bg-card); }
+.home-metrics strong { color:var(--text-main); font-size:22px; line-height:1.2; font-weight:650; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+.home-metrics span { overflow:hidden; color:var(--text-quote); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.home-continue { display:flex; align-items:center; gap:14px; min-height:104px; margin-bottom:10px; padding:17px 19px; border:1px solid var(--border); border-radius:12px; background:var(--bg-card); }
 .home-continue-mark { width:36px; height:36px; flex:0 0 36px; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border)); border-radius:9px; background:var(--primary-soft); color:var(--primary); }
 .home-continue-copy { display:flex; flex:1; min-width:0; flex-direction:column; gap:4px; }
 .home-kicker { color:var(--primary); font-size:9px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; }
@@ -436,7 +432,7 @@ const getDaysLeft = (dateStr) => {
 .home-side-block:first-child { border-top:0; }
 .home-side-daily { border-top:1px solid var(--border); }
 @media(max-width:760px) {
-  .home-overview { grid-template-columns:1fr; }
+  .home-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .home-continue { align-items:flex-start; flex-wrap:wrap; }
   .home-continue .ui-btn { width:100%; }
   .home-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }

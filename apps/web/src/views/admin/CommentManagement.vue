@@ -138,11 +138,10 @@ const totalPages = computed(() => Math.ceil(total.value / limit.value));
             </div>
         </div>
 
-        <div class="admin-metric-strip">
+        <div class="admin-metric-strip is-three">
             <div class="admin-metric"><span>总评论</span><strong>{{ total }}</strong></div>
             <div class="admin-metric"><span>本页显示</span><strong>{{ comments.length }}</strong></div>
-            <div class="admin-metric"><span>每页</span><strong>{{ limit }}</strong></div>
-            <div class="admin-metric"><span>页码</span><strong>{{ page }} / {{ totalPages || 1 }}</strong></div>
+            <div class="admin-metric"><span>当前状态</span><strong class="is-text">{{ statusOptions.find(o => o.value === statusFilter)?.label || '全部状态' }}</strong></div>
         </div>
 
         <!-- Loading -->

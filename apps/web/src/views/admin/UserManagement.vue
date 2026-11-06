@@ -1,5 +1,8 @@
 <script setup>
-import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
+import PageHeader from '../../components/ui/PageHeader.vue';
+import PageToolbar from '../../components/ui/PageToolbar.vue';
+import EmptyState from '../../components/ui/EmptyState.vue';
+import ModalShell from '../../components/ui/ModalShell.vue';
 import { ref, onMounted, computed } from 'vue';
 import { admin } from '../../api';
 import Toast from '../../components/ui/Toast.vue';
@@ -152,12 +155,11 @@ onMounted(() => {
 
 <template>
   <div class="admin-workspace ui-page admin-stack">
-    <div class="admin-page-bar">
-      <AdminPageHeading title="用户管理" description="管理账号、角色与会员状态。" />
-      <div class="admin-page-actions">
+    <PageHeader eyebrow="用户与运营" title="用户管理" description="管理账号、角色与会员状态。">
+      <template #actions>
         <button class="ui-btn ui-btn-primary admin-control" type="button" @click="openAddUser">新增用户</button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div class="admin-metric-strip">
       <div class="admin-metric"><span>账户总数</span><strong>{{ users.length }}</strong></div>
@@ -166,7 +168,7 @@ onMounted(() => {
       <div class="admin-metric"><span>当前筛选</span><strong>{{ filteredUsers.length }}</strong></div>
     </div>
 
-    <div class="admin-filter-bar">
+    <PageToolbar>
       <div class="ui-search admin-search">
         <svg class="ui-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
         <input v-model="userQuery" class="ui-input" type="search" placeholder="搜索用户名或 UID" aria-label="搜索用户" />
@@ -177,7 +179,11 @@ onMounted(() => {
         <button type="button" :class="{ 'is-active': roleFilter === 'user' }" @click="roleFilter = 'user'">普通用户</button>
         <button type="button" :class="{ 'is-active': roleFilter === 'demo' }" @click="roleFilter = 'demo'">展示用户</button>
       </div>
-    </div>
+      <template #end>
+        <span class="text-[11px]" style="color:var(--text-quote)">{{ filteredUsers.length }} 个账号</span>
+        <button v-if="userQuery || roleFilter !== 'all'" class="ui-btn ui-btn-ghost ui-btn-sm" type="button" @click="userQuery = ''; roleFilter = 'all'">清除筛选</button>
+      </template>
+    </PageToolbar>
 
     <div v-if="loading" class="admin-table-card">
       <div class="admin-empty">
@@ -187,11 +193,9 @@ onMounted(() => {
     </div>
 
     <div v-else-if="error" class="admin-table-card">
-      <div class="admin-empty">
-        <span class="admin-empty-title">无法读取用户列表</span>
-        <span class="admin-empty-copy">{{ error }}</span>
-        <button class="ui-btn ui-btn-outline ui-btn-sm mt-3" type="button" @click="fetchUsers">重试</button>
-      </div>
+      <EmptyState title="无法读取用户列表" :description="error">
+        <button class="ui-btn ui-btn-outline ui-btn-sm" type="button" @click="fetchUsers">重试</button>
+      </EmptyState>
     </div>
 
     <template v-else>
@@ -235,10 +239,7 @@ onMounted(() => {
             </tr>
             <tr v-if="!filteredUsers.length">
               <td colspan="6">
-                <div class="admin-empty admin-table-empty">
-                  <span class="admin-empty-title">没有匹配的账号</span>
-                  <span class="admin-empty-copy">调整搜索词或角色筛选后再试</span>
-                </div>
+                <EmptyState title="没有匹配的账号" description="调整搜索词或角色筛选后再试" />
               </td>
             </tr>
           </tbody>
@@ -263,20 +264,11 @@ onMounted(() => {
             </div>
           </div>
         </div>
-        <div v-if="!filteredUsers.length" class="admin-empty admin-table-empty">
-          <span class="admin-empty-title">没有匹配的账号</span>
-          <span class="admin-empty-copy">调整搜索词或角色筛选后再试</span>
-        </div>
+        <EmptyState v-if="!filteredUsers.length" title="没有匹配的账号" description="调整搜索词或角色筛选后再试" />
       </div>
     </template>
 
-    <div v-if="showUserModal" class="admin-modal-backdrop" @click.self="showUserModal = false">
-      <div class="admin-modal" role="dialog" aria-modal="true" aria-label="用户信息">
-        <div class="admin-modal-head">
-          <h2>{{ editingUser ? '编辑用户' : '新增用户' }}</h2>
-          <button class="admin-modal-close" type="button" aria-label="关闭" @click="showUserModal = false">×</button>
-        </div>
-        <div class="admin-modal-body">
+    <ModalShell :open="showUserModal" :title="editingUser ? '编辑用户' : '新增用户'" @close="showUserModal = false">
           <div class="admin-form-row">
             <label class="admin-form-label" for="user-name">用户名</label>
             <input id="user-name" v-model="userForm.username" class="ui-input" type="text" autocomplete="off" />
@@ -298,13 +290,11 @@ onMounted(() => {
             <input id="user-subscription" v-model="userForm.subscription_end_date" class="ui-input" type="datetime-local" />
             <p class="admin-form-hint">置空即取消订阅。</p>
           </div>
-        </div>
-        <div class="admin-modal-foot">
+        <template #footer>
           <button class="ui-btn ui-btn-outline" type="button" @click="showUserModal = false">取消</button>
           <button class="ui-btn ui-btn-primary" type="button" @click="handleSaveUser">保存</button>
-        </div>
-      </div>
-    </div>
+        </template>
+    </ModalShell>
 
     <Toast ref="toast" />
     <ConfirmDialog ref="confirmDialog" />

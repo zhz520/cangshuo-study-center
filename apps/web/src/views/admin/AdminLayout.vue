@@ -157,7 +157,7 @@ onMounted(() => {
 .admin-user { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-sub); }
 .admin-menu-btn { display: none; width: 34px; height: 34px; flex-direction: column; justify-content: center; gap: 4px; padding: 0 8px; border-radius: 8px; }
 .admin-menu-btn span { height: 1px; background: var(--text-sub); }
-.admin-content { padding: 24px; width: min(1280px, 100%); margin: 0 auto; }
+.admin-content { padding: 24px; width: min(var(--page-admin), 100%); margin: 0 auto; }
 .admin-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.28); z-index: 45; }
 @media (max-width: 900px) {
   .admin-shell { grid-template-columns: 1fr; }

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { data as api } from '../api';
 import Toast from '../components/ui/Toast.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
 
 const toast = ref(null);
 const majors = ref([]);
@@ -76,11 +77,12 @@ onMounted(loadMajors);
 </script>
 
 <template>
-  <div class="ui-page export-page">
-    <header class="ui-page-head">
-      <div><p class="ui-eyebrow">授权导出</p><h1 class="ui-title">题库导出</h1><p class="ui-subtitle">使用管理员生成的账户专属随机密码，导出当前权限范围内的题目。</p></div>
-      <span class="ui-badge" :class="isPlus ? 'ui-badge-blue' : ''">{{ isPlus ? 'Plus 权限' : '免费预览权限' }}</span>
-    </header>
+  <div class="ui-page ui-page-wide export-page">
+    <PageHeader eyebrow="授权导出" title="题库导出" description="使用管理员生成的账户专属随机密码，导出当前权限范围内的题目。">
+      <template #actions>
+        <span class="ui-badge" :class="isPlus ? 'ui-badge-blue' : ''">{{ isPlus ? 'Plus 权限' : '免费预览权限' }}</span>
+      </template>
+    </PageHeader>
 
     <div class="export-layout">
       <section class="ui-card export-form-card">

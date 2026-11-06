@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { data as api } from "../api";
+import PageHeader from "../components/ui/PageHeader.vue";
 
 const router = useRouter();
 const loading = ref(true);
@@ -72,11 +73,12 @@ const totalCount = computed(() => progress.value.length);
 </script>
 
 <template>
-  <div class="ui-page stats-page">
-    <header class="ui-page-head">
-      <div><p class="ui-eyebrow">学习统计</p><h1 class="ui-title">看见积累，找到下一步</h1><p class="ui-subtitle">基于本账号的刷题记录，不做推测性统计。</p></div>
-      <button class="ui-btn ui-btn-outline ui-btn-sm" @click="router.push('/analysis')">详细分析</button>
-    </header>
+  <div class="ui-page ui-page-wide stats-page">
+    <PageHeader eyebrow="学习统计" title="看见积累，找到下一步" description="基于本账号的刷题记录，不做推测性统计。">
+      <template #actions>
+        <button class="ui-btn ui-btn-outline ui-btn-sm" @click="router.push('/analysis')">详细分析</button>
+      </template>
+    </PageHeader>
 
     <section class="stats-overview ui-card ui-card-pad">
       <div class="ui-grid ui-grid-4">

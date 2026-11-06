@@ -867,13 +867,18 @@ const handleExport = async () => {
 
     <!-- Question List -->
     <div class="space-y-4">
-        <div v-if="loading" class="py-20 text-center animate-pulse">
-            <div class="w-12 h-12 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4"></div>
-            <p class="text-slate-400 font-bold text-sm">LOADING DATA...</p>
+        <div v-if="loading" class="admin-table-card">
+            <div class="admin-empty">
+                <span class="ui-spinner"></span>
+                <span class="admin-empty-title">正在加载题库</span>
+            </div>
         </div>
 
-        <div v-else-if="questions.length === 0" class="py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[32px]">
-            <p class="admin-empty-title">暂无题目数据</p><p class="admin-empty-copy">调整筛选条件，或新增第一道题目。</p>
+        <div v-else-if="questions.length === 0" class="admin-table-card">
+            <div class="admin-empty">
+                <span class="admin-empty-title">暂无题目数据</span>
+                <span class="admin-empty-copy">调整筛选条件，或新增第一道题目。</span>
+            </div>
         </div>
 
         <div v-else class="admin-question-list">
@@ -886,26 +891,11 @@ const handleExport = async () => {
                     </label>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-2 flex-wrap">
-                             <span
-                                class="px-2 py-0.5 rounded text-[10px] uppercase shrink-0"
-                                :class="{
-                                    'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300': q.type === 'single',
-                                    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300': q.type === 'multiple',
-                                    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300': q.type === 'judge',
-                                    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300': q.type === 'fill',
-                                    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300': q.type === 'sort',
-                                    'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300': q.type === 'material'
-                                }"
-                            >
-                                {{ getTypeName(q.type) }}
-                            </span>
+                            <span class="admin-role">{{ getTypeName(q.type) }}</span>
                             <span class="text-[10px] text-slate-400 font-mono">ID: {{ q.id }}</span>
                              <span class="text-[10px] text-slate-400/50 hidden sm:inline">•</span>
                             <span class="text-[10px] text-slate-400 font-bold truncate max-w-[150px] hidden sm:inline">{{ q.major_name || '未分类' }} / {{ q.subject_name || '未分类' }}</span>
-                             <span
-                                class="px-2 py-0.5 rounded text-[10px] uppercase ml-1"
-                                :class="q.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'"
-                            >
+                             <span class="admin-status ml-1" :class="{ 'is-plus': q.is_active }">
                                 {{ q.is_active ? '已上线' : '未上线' }}
                             </span>
                         </div>
@@ -914,17 +904,17 @@ const handleExport = async () => {
                         </h3>
                         <div class="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap gap-2">
                             <span class="font-bold">答案:</span>
-                            <span class="font-mono bg-slate-100 dark:bg-slate-700 px-1.5 rounded text-indigo-600 dark:text-indigo-400">
+                            <span class="font-mono bg-slate-100 dark:bg-slate-700 px-1.5 rounded" style="color:var(--text-main)">
                                 {{ formatAnswer(q.answer) }}
                             </span>
                         </div>
                     </div>
 
-                    <div class="flex flex-row sm:flex-col gap-2 shrink-0">
-                        <button @click="openEditQuestion(q)" class="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-900/30 dark:text-slate-500 dark:hover:text-indigo-400 rounded-lg transition-colors admin-control" title="编辑">
+                    <div class="admin-row-actions shrink-0">
+                        <button @click="openEditQuestion(q)" class="admin-text-action" title="编辑">
                             编辑
                         </button>
-                        <button @click="deleteQuestion(q.id)" class="p-2 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-900/30 dark:text-slate-500 dark:hover:text-rose-400 rounded-lg transition-colors admin-control" title="删除">
+                        <button @click="deleteQuestion(q.id)" class="admin-text-action danger" title="删除">
                            删除
                         </button>
                     </div>

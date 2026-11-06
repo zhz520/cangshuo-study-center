@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { data as api } from "../api";
 import Toast from "../components/ui/Toast.vue";
 import ConfirmDialog from "../components/ui/ConfirmDialog.vue";
+import PageHeader from "../components/ui/PageHeader.vue";
 
 const router = useRouter();
 const loading = ref(false);
@@ -214,11 +215,12 @@ const clearAll = async () => {
 </script>
 
 <template>
-  <div class="ui-page data-page">
-    <header class="ui-page-head">
-      <div><p class="ui-eyebrow">账户数据</p><h1 class="ui-title">学习数据</h1><p class="ui-subtitle">备份、恢复学习进度，或清理账户数据。</p></div>
-      <RouterLink to="/export" class="ui-btn ui-btn-outline ui-btn-sm">导出题库</RouterLink>
-    </header>
+  <div class="ui-page ui-page-wide data-page">
+    <PageHeader eyebrow="账户数据" title="学习数据" description="备份、恢复学习进度，或清理账户数据。">
+      <template #actions>
+        <RouterLink to="/export" class="ui-btn ui-btn-outline ui-btn-sm">导出题库</RouterLink>
+      </template>
+    </PageHeader>
 
     <section class="ui-grid ui-grid-2 data-actions">
       <div class="ui-card ui-card-pad">

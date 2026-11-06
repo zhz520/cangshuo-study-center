@@ -6,6 +6,7 @@ import { data as api } from '../api';
 import * as echarts from 'echarts';
 import markdownit from 'markdown-it';
 import Toast from '../components/ui/Toast.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -335,12 +336,15 @@ const overallAccuracy = computed(() => {
 </script>
 
 <template>
-  <div class="ui-page analysis-page">
-    <header class="ui-page-head">
-      <div><p class="ui-eyebrow">学习诊断</p><h1 class="ui-title">学习诊断报告</h1><p class="ui-subtitle">基于已记录的学习行为和作答结果。</p></div>
-      <span v-if="detailedStats" class="ui-badge">连续 {{ detailedStats.streak || 0 }} 天</span>
-      <button class="ui-btn ui-btn-outline ui-btn-sm" @click="router.push('/stats')">返回统计</button>
-    </header>
+  <div class="ui-page ui-page-wide analysis-page">
+    <PageHeader eyebrow="学习诊断" title="学习诊断报告" description="基于已记录的学习行为和作答结果。">
+      <template #meta>
+        <span v-if="detailedStats" class="ui-badge mt-2">连续 {{ detailedStats.streak || 0 }} 天</span>
+      </template>
+      <template #actions>
+        <button class="ui-btn ui-btn-outline ui-btn-sm" @click="router.push('/stats')">返回统计</button>
+      </template>
+    </PageHeader>
 
     <div v-if="loading" class="ui-card ui-loading"><span class="ui-spinner mx-auto"></span><p class="mt-3">正在加载诊断数据</p></div>
     <template v-else>
