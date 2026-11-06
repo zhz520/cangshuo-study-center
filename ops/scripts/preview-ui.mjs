@@ -12,7 +12,8 @@ const subjects=[{id:10,name:'计算机基础',major_id:1,question_count:121}];
 const users=[user,{id:2,username:'student',role:'user',subscription_end_date:null,created_at:'2026-10-01'}];
 const questions=Array.from({length:121},(_,i)=>({id:i+1,subject_id:10,subject_name:'计算机基础',is_active:1,type:'single',content:`第 ${i+1} 题：计算机中用于暂时存储运行数据的部件是？`,options:{A:'内存',B:'硬盘',C:'显示器',D:'键盘'},answer:'A',analysis:'内存用于暂时存储程序运行时的数据。',tags:['基础'],difficulty:1}));
 const port=Number(process.env.STUDY_PREVIEW_PORT||4175);
-const server=await createServer({root,server:{host:'127.0.0.1',port,strictPort:true},plugins:[{name:'isolated-ui-fixtures',enforce:'pre',transformIndexHtml(html){return html.replace('<head>','<head><script>localStorage.setItem("token","local-fixture");localStorage.setItem("user",'+JSON.stringify(JSON.stringify(user))+');</script>')},configureServer(server){
+const injectAuth=process.env.STUDY_PREVIEW_NO_AUTH!=='1';
+const server=await createServer({root,server:{host:'127.0.0.1',port,strictPort:true},plugins:[{name:'isolated-ui-fixtures',enforce:'pre',transformIndexHtml(html){if(!injectAuth)return html;return html.replace('<head>','<head><script>localStorage.setItem("token","local-fixture");localStorage.setItem("user",'+JSON.stringify(JSON.stringify(user))+');</script>')},configureServer(server){
  server.middlewares.use((req,res,next)=>{
   if(!req.url.startsWith('/api/'))return next();
   const url=new URL(req.url,'http://localhost');const p=url.pathname;

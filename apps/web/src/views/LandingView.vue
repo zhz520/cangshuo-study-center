@@ -125,8 +125,10 @@ onMounted(async () => {
       </section>
 
       <section id="features" class="landing-section landing-container">
-        <div class="landing-section-head"><span class="ui-eyebrow">产品能力</span><h2>少一点干扰，多一点完成</h2><p>从进入题库到复盘，保持一条清楚的学习路径。</p></div>
-        <div class="landing-feature-grid"><article v-for="(feature, i) in features" :key="feature.title" class="landing-feature"><span class="feature-index">0{{ i + 1 }}</span><h3>{{ feature.title }}</h3><p>{{ feature.desc }}</p></article></div>
+        <div class="landing-split">
+          <div class="landing-section-head landing-sticky-head"><span class="ui-eyebrow">产品能力</span><h2>少一点干扰，多一点完成</h2><p>从进入题库到复盘，保持一条清楚的学习路径。</p></div>
+          <div class="landing-feature-grid"><article v-for="(feature, i) in features" :key="feature.title" class="landing-feature"><span class="feature-index">0{{ i + 1 }}</span><h3>{{ feature.title }}</h3><p>{{ feature.desc }}</p></article></div>
+        </div>
       </section>
 
       <section id="flow" class="landing-section landing-container landing-flow">
@@ -135,11 +137,13 @@ onMounted(async () => {
       </section>
 
       <section id="faq" class="landing-section landing-container landing-faq">
-        <div class="landing-section-head"><span class="ui-eyebrow">常见问题</span><h2>你可能想知道</h2></div>
-        <div class="ui-list-card ui-card"><button v-for="(item, i) in faqs" :key="item.q" class="ui-row-button faq-row" @click="toggleFaq(i)"><span class="ui-grow"><strong>{{ item.q }}</strong><small v-if="openFaq === i" class="block ui-small ui-muted faq-answer">{{ item.a }}</small></span><span class="ui-faint">{{ openFaq === i ? '−' : '+' }}</span></button></div>
+        <div class="landing-split landing-faq-split">
+          <div class="landing-section-head landing-sticky-head"><span class="ui-eyebrow">常见问题</span><h2>你可能想知道</h2><p>关于平台、题库和会员的常见说明。</p></div>
+          <div class="landing-faq-list"><button v-for="(item, i) in faqs" :key="item.q" class="faq-row" @click="toggleFaq(i)"><span class="ui-grow"><strong>{{ item.q }}</strong><small v-if="openFaq === i" class="faq-answer">{{ item.a }}</small></span><span class="faq-toggle">{{ openFaq === i ? '−' : '+' }}</span></button></div>
+        </div>
       </section>
 
-      <section class="landing-cta"><div class="landing-container landing-cta-inner"><div><span class="ui-eyebrow">现在开始</span><h2>把下一次练习，变成看得见的进步。</h2></div><div><button class="ui-btn ui-btn-primary ui-btn-lg" @click="go('/register')">开始刷题</button></div></div></section>
+      <section class="landing-cta"><div class="landing-container"><div class="landing-cta-panel"><div><span class="ui-eyebrow">现在开始</span><h2>把下一次练习，变成看得见的进步。</h2><p>从一道题开始，学习记录会自动保存。</p></div><div><button class="ui-btn ui-btn-lg landing-cta-button" @click="go('/register')">开始刷题</button></div></div></div></section>
     </main>
 
     <footer class="landing-footer"><div class="landing-container landing-footer-inner"><span>© {{ new Date().getFullYear() }} 沧烁</span><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">蜀ICP备2025126838号-1</a><a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51172202000160" target="_blank" rel="noopener">川公网安备51172202000160号</a><div><RouterLink to="/score-query">成绩查询</RouterLink><RouterLink to="/download">下载 App</RouterLink><RouterLink to="/agreement">用户协议</RouterLink><RouterLink to="/privacy">隐私政策</RouterLink><RouterLink to="/login">登录</RouterLink></div></div></footer>
@@ -197,12 +201,16 @@ onMounted(async () => {
 .landing-stats-grid strong { font-size: 24px; letter-spacing: -.03em; }
 .landing-stats-grid strong.is-small { font-size: 15px; letter-spacing: -.01em; }
 .landing-stats-grid span { font-size: 11px; color: var(--text-sub); }
-.landing-section { padding-top: 64px; padding-bottom: 64px; }
+.landing-section { padding-top: 84px; padding-bottom: 84px; }
 .landing-section-head { max-width: 620px; margin-bottom: 26px; }
-.landing-section-head h2 { margin-top: 9px; font-size: 30px; line-height: 1.25; letter-spacing: -.035em; font-weight: 680; }
-.landing-section-head p { margin-top: 8px; color: var(--text-sub); font-size: 14px; }
-.landing-feature-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0 36px; border-top: 1px solid var(--border); }
-.landing-feature { display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 10px; padding: 20px 0; border-bottom: 1px solid var(--border); background: none; }
+.landing-section-head h2 { margin-top: 9px; font-size: 32px; line-height: 1.22; letter-spacing: -.035em; font-weight: 680; }
+.landing-section-head p { margin-top: 9px; color: var(--text-sub); font-size: 14px; line-height: 1.75; }
+.landing-split { display: grid; grid-template-columns: 360px minmax(0,1fr); gap: 64px; align-items: start; }
+.landing-split .landing-section-head { max-width: none; margin-bottom: 0; }
+.landing-split .landing-section-head h2 { font-size: 30px; }
+.landing-sticky-head { position: sticky; top: 92px; }
+.landing-feature-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 40px; border-top: 1px solid var(--border); }
+.landing-feature { display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 10px; padding: 19px 0; border-bottom: 1px solid var(--border); background: none; }
 .feature-index { grid-row: 1 / span 2; font-size: 11px; color: var(--primary); font-weight: 700; }
 .landing-feature h3 { margin-top: 0; font-size: 15px; font-weight: 650; }
 .landing-feature h3, .landing-feature p { grid-column: 2; }
@@ -215,17 +223,26 @@ onMounted(async () => {
 .landing-flow-grid b { font-size: 12px; color: var(--primary); }
 .landing-flow-grid strong { font-size: 17px; }
 .landing-flow-grid span { font-size: 12px; line-height: 1.7; color: var(--text-sub); }
-.landing-faq { max-width: 850px; border-top: 1px solid var(--border); }
-.faq-row { padding-left: 18px; padding-right: 18px; }
-.faq-answer { padding-top: 8px; line-height: 1.75; }
-.landing-cta { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg-card); }
-.landing-cta-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-top: 40px; padding-bottom: 40px; }
-.landing-cta h2 { margin-top: 8px; font-size: 24px; letter-spacing: -.03em; }
-.landing-cta-inner > div:last-child { display: flex; gap: 8px; flex-wrap: wrap; }
+.landing-faq { max-width: none; border-top: 0; }
+.landing-faq-split { padding-top: 28px; border-top: 1px solid var(--border); }
+.landing-faq-list { border-top: 1px solid var(--border); }
+.faq-row { width: 100%; min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 2px; border-bottom: 1px solid var(--border); color: var(--text-main); text-align: left; }
+.faq-row:hover strong { color: var(--primary); }
+.faq-row strong { font-size: 14px; font-weight: 550; transition: color .15s ease; }
+.faq-answer { display: block; max-width: 680px; margin-top: 9px; color: var(--text-sub); font-size: 12px; line-height: 1.8; }
+.faq-toggle { flex: 0 0 26px; color: var(--text-quote); font-size: 17px; text-align: center; }
+.landing-cta { padding: 24px 0 80px; background: none; border: 0; }
+.landing-cta-panel { display: flex; align-items: center; justify-content: space-between; gap: 36px; padding: 36px 40px; border-radius: 16px; background: var(--text-main); color: var(--bg-card); }
+.landing-cta-panel .ui-eyebrow { color: color-mix(in srgb, var(--bg-card) 60%, transparent); }
+.landing-cta-panel h2 { max-width: 720px; margin-top: 9px; color: inherit; font-size: 28px; line-height: 1.3; letter-spacing: -.03em; }
+.landing-cta-panel p { margin-top: 8px; color: color-mix(in srgb, var(--bg-card) 68%, transparent); font-size: 12px; }
+.landing-cta-panel > div:last-child { flex: 0 0 auto; }
+.landing-cta-button { min-width: 124px; background: var(--bg-card); color: var(--text-main); }
+.landing-cta-button:hover { background: color-mix(in srgb, var(--bg-card) 88%, transparent); }
 .landing-footer { padding: 22px 0; }
 .landing-footer-inner { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; color: var(--text-quote); font-size: 11px; }
 .landing-footer-inner div { display: flex; gap: 14px; margin-left: auto; }
 .landing-footer a:hover { color: var(--text-main); }
-@media (max-width: 900px) { .landing-hero-grid { grid-template-columns: 1fr; gap: 36px; } .landing-product { max-width: 460px; transform: none; } .landing-feature-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-@media (max-width: 700px) { .landing-links, .landing-nav-actions > .ui-btn { display: none; } .landing-menu-btn { display: grid; place-items: center; } .landing-mobile-menu { display: flex; flex-direction: column; padding: 8px 22px 18px; gap: 2px; border-top: 1px solid var(--border); background: var(--bg-card); } .landing-mobile-menu a { padding: 12px 0; font-size: 13px; border-bottom: 1px solid var(--border); } .landing-hero { padding-top: 52px; } .landing-hero h1 { font-size: 36px; } .landing-stats-grid { grid-template-columns: repeat(2,1fr); gap: 16px; } .landing-stats-grid div:nth-child(3) { border-left: 0; padding-left: 0; } .landing-section { padding-top: 52px; padding-bottom: 52px; } .landing-feature-grid, .landing-flow-grid { grid-template-columns: 1fr; } .landing-flow-grid div { border-right: 0; border-bottom: 1px solid var(--border); padding: 16px 0; } .landing-flow-grid div + div { padding-left: 0; } .landing-flow-grid div:last-child { border-bottom: 0; } .landing-cta-inner { align-items: flex-start; flex-direction: column; } .landing-footer-inner div { margin-left: 0; } }
+@media (max-width: 900px) { .landing-hero-grid { grid-template-columns: 1fr; gap: 36px; } .landing-product { max-width: 460px; transform: none; } .landing-split { grid-template-columns: 1fr; gap: 28px; } .landing-sticky-head { position: static; } .landing-feature-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .landing-cta-panel { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 700px) { .landing-links, .landing-nav-actions > .ui-btn { display: none; } .landing-menu-btn { display: grid; place-items: center; } .landing-mobile-menu { display: flex; flex-direction: column; padding: 8px 22px 18px; gap: 2px; border-top: 1px solid var(--border); background: var(--bg-card); } .landing-mobile-menu a { padding: 12px 0; font-size: 13px; border-bottom: 1px solid var(--border); } .landing-hero { padding-top: 52px; } .landing-hero h1 { font-size: 36px; } .landing-stats-grid { grid-template-columns: repeat(2,1fr); gap: 16px; } .landing-stats-grid div:nth-child(3) { border-left: 0; padding-left: 0; } .landing-section { padding-top: 56px; padding-bottom: 56px; } .landing-section-head h2 { font-size: 28px; } .landing-feature-grid, .landing-flow-grid { grid-template-columns: 1fr; } .landing-flow-grid div { border-right: 0; border-bottom: 1px solid var(--border); padding: 16px 0; } .landing-flow-grid div + div { padding-left: 0; } .landing-flow-grid div:last-child { border-bottom: 0; } .landing-cta { padding-bottom: 56px; } .landing-cta-panel { padding: 26px 22px; } .landing-cta-panel h2 { font-size: 24px; } .landing-cta-panel > div:last-child, .landing-cta-button { width: 100%; } .landing-footer-inner div { margin-left: 0; } }
 </style>
