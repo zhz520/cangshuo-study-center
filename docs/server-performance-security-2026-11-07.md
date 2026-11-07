@@ -27,7 +27,7 @@
 - MySQL 改为只监听 `127.0.0.1,::1`，关闭未使用的 X Protocol 33060。
 - 研究站点增加安全响应头、关闭 TLS 1.1、移除 3DES，保留 TLS 1.2/1.3。
 - `/backup/`、`/backups/`、`/phpinfo.php` 明确返回 404，避免 SPA 回退掩盖敏感文件。
-- SSH 设置 `MaxAuthTries 3`、`LoginGraceTime 30`、关闭 X11 转发，保留现有密码登录。
+- SSH 设置 `MaxAuthTries 3`、`LoginGraceTime 30`、关闭 X11 转发；已切换为仅公钥登录。`root` 只允许密钥，`PasswordAuthentication no`、`AuthenticationMethods publickey`。
 - fail2ban sshd 规则改为 3 次/10 分钟，封禁 24 小时；过滤器已验证可匹配现有 2,176 条失败记录。
 - firewalld 移除 888、8089 和 cockpit 服务；phpMyAdmin 和后端 API 仍可由本机/Nginx 访问。
 - `/usr/local/frps/frps.toml` 权限收紧为 600。
@@ -47,7 +47,7 @@
 
 ## 仍需处理
 
-- root 仍允许密码登录。服务器已有 2 个 root 公钥，可在确认可用的密钥登录后改为 `PermitRootLogin prohibit-password`。
+- SSH 已改为仅公钥登录。Windows 本机 `~/.ssh/id_ed25519` 与服务器 `authorized_keys` 中的 `SHA256:rFFbWSMA1aZCVsxdnBcD9B+/mTZ5bQ+oEEfwQC7ORXU` 匹配，密码登录已实测返回 `Permission denied (publickey)`。请备份该私钥，丢失后只能通过云控制台或宝塔 VNC 恢复。
 - 宝塔面板 24986 仍对公网开放，建议在防火墙或云安全组限制到固定管理 IP。
 - SELinux 当前为 Disabled；启用需要逐项验证 Nginx、MySQL、Node 和宝塔面板策略。
 - `cangshuo_api` 的 8089 仍在本机监听，但公网防火墙已关闭；如无直连需求，可进一步改绑 127.0.0.1。

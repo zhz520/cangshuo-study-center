@@ -1,10 +1,12 @@
-"""Ephemeral SSH session. Password is read once from stdin and never persisted."""
+"""Ephemeral SSH session. Prefers STUDY_SSH_KEY or ~/.ssh/id_ed25519; password is a one-time fallback."""
 import base64
 import hashlib
 import getpass
 import json
+import os
 import sys
 import time
+from pathlib import Path
 
 import paramiko
 
@@ -18,12 +20,22 @@ class FirstContactPolicy(paramiko.MissingHostKeyPolicy):
 client = paramiko.SSHClient()
 client.load_system_host_keys()
 client.set_missing_host_key_policy(FirstContactPolicy())
-credential = getpass.getpass("SSH credential: ")
-try:
-    client.connect("47.109.86.76", username="root", password=credential, timeout=15,
+key_path = os.environ.get("STUDY_SSH_KEY")
+if not key_path:
+    candidate = Path.home() / ".ssh" / "id_ed25519"
+    if candidate.exists():
+        key_path = str(candidate)
+
+if key_path:
+    client.connect("47.109.86.76", username="root", key_filename=key_path, timeout=15,
                    auth_timeout=15, banner_timeout=15, look_for_keys=False, allow_agent=False)
-finally:
-    credential = None
+else:
+    credential = getpass.getpass("SSH credential: ")
+    try:
+        client.connect("47.109.86.76", username="root", password=credential, timeout=15,
+                       auth_timeout=15, banner_timeout=15, look_for_keys=False, allow_agent=False)
+    finally:
+        credential = None
 print(json.dumps({"connected": True}), flush=True)
 try:
     for line in sys.stdin:
