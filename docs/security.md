@@ -64,6 +64,13 @@
 
 详细操作和部署步骤见 [question-export.md](question-export.md)。
 
+### 2026-11-08 导出入口收敛
+
+- 答题页移除了客户端 Word 导出和批量打印，避免已经加载到浏览器的题目绕过账户导出密码。
+- 答题页菜单和答题卡中的导出入口统一跳转到 `/export`，服务端继续校验登录态、导出密码、会员和专业访问控制，并记录导出审计。
+- 生产 Web 已发布，`index.html` SHA-256 为 `02C2965EF95E67DFB351AEA3382CF34F6D065669B1CD5E4B831D6A01E9F57E4B`。
+- 发布前备份：`/www/backup/codex/web-ui-20261108T045138Z/web-before.tar.gz`。
+
 ## 配置与兼容性
 
 | 配置 | 要求 |
