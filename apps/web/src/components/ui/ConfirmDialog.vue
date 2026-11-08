@@ -1,5 +1,15 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+
+const props = defineProps({
+  show: { type: Boolean, default: undefined },
+  title: { type: String, default: '' },
+  content: { type: String, default: '' },
+  type: { type: String, default: '' },
+  confirmText: { type: String, default: '' },
+  cancelText: { type: String, default: '' }
+});
+const emit = defineEmits(['confirm', 'cancel', 'update:show']);
 
 const isVisible = ref(false);
 const options = ref({
@@ -7,99 +17,68 @@ const options = ref({
   message: '',
   confirmText: '确定',
   cancelText: '取消',
-  type: 'info' // info, danger
+  type: 'info'
 });
 
 let resolvePromise = null;
-let rejectPromise = null;
 
 const confirm = (opts) => {
   options.value = { ...options.value, ...opts };
   isVisible.value = true;
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     resolvePromise = resolve;
-    rejectPromise = reject;
   });
 };
 
-const handleConfirm = () => {
-  isVisible.value = false;
-  if (resolvePromise) resolvePromise(true);
-};
+const visible = computed(() => props.show !== undefined ? props.show : isVisible.value);
+const view = computed(() => ({
+  title: props.title || options.value.title,
+  content: props.content || options.value.message || options.value.content,
+  type: props.type || options.value.type,
+  confirmText: props.confirmText || options.value.confirmText,
+  cancelText: props.cancelText || options.value.cancelText
+}));
 
-const handleCancel = () => {
+const finish = (value) => {
+  if (props.show !== undefined) {
+    emit('update:show', false);
+    emit(value ? 'confirm' : 'cancel');
+    return;
+  }
   isVisible.value = false;
-  if (resolvePromise) resolvePromise(false);
+  if (resolvePromise) resolvePromise(value);
+  resolvePromise = null;
 };
 
 defineExpose({ confirm });
 </script>
 
 <template>
-  <Transition name="fade">
-    <div
-      v-if="isVisible"
-      class="fixed inset-0 z-[100] flex items-center justify-center p-4"
-    >
-      <!-- Backdrop -->
-      <div
-        class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-        @click="handleCancel"
-      ></div>
-
-      <!-- Modal Content -->
-      <div
-        class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm p-6 relative z-10 shadow-2xl transform transition-all"
-      >
-        <div class="mb-4">
-          <h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 mb-2">
-            {{ options.title }}
-          </h3>
-          <p
-            class="text-sm text-slate-500 dark:text-slate-400 whitespace-pre-line leading-relaxed"
-          >
-            {{ options.message || options.content }}
-          </p>
+  <Transition name="confirm-fade">
+    <div v-if="visible" class="confirm-backdrop" @click.self="finish(false)">
+      <section class="confirm-modal" role="dialog" aria-modal="true" :aria-label="view.title">
+        <div class="confirm-copy">
+          <h2>{{ view.title }}</h2>
+          <p>{{ view.content }}</p>
         </div>
-
-        <div class="flex gap-3">
-          <button
-            @click="handleCancel"
-            class="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-          >
-            {{ options.cancelText }}
-          </button>
-          <button
-            @click="handleConfirm"
-            class="flex-1 py-2.5 rounded-xl font-bold text-sm text-white shadow-lg transition-all transform active:scale-95"
-            :class="{
-              'bg-indigo-500 shadow-indigo-200 hover:bg-indigo-600':
-                options.type === 'info',
-              'bg-red-500 shadow-red-200 hover:bg-red-600': options.type === 'danger',
-            }"
-          >
-            {{ options.confirmText }}
-          </button>
+        <div class="confirm-actions">
+          <button class="ui-btn ui-btn-outline" type="button" @click="finish(false)">{{ view.cancelText }}</button>
+          <button class="ui-btn" :class="view.type === 'danger' ? 'confirm-danger' : 'ui-btn-primary'" type="button" @click="finish(true)">{{ view.confirmText }}</button>
         </div>
-      </div>
+      </section>
     </div>
   </Transition>
 </template>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.fade-enter-from .transform,
-.fade-leave-to .transform {
-  transform: scale(0.95);
-  opacity: 0;
-}
+.confirm-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(15,23,42,.38); backdrop-filter: blur(3px); }
+.confirm-modal { width: min(400px, 100%); padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-card); box-shadow: 0 24px 60px rgba(15,23,42,.18); }
+.confirm-copy h2 { margin: 0; color: var(--text-main); font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+.confirm-copy p { margin-top: 8px; color: var(--text-sub); font-size: 12px; line-height: 1.7; white-space: pre-line; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+.confirm-actions .ui-btn { min-width: 76px; }
+.confirm-danger { background: var(--danger); color: #fff; }
+.confirm-danger:hover { background: color-mix(in srgb, var(--danger) 88%, #000); }
+.confirm-fade-enter-active, .confirm-fade-leave-active { transition: opacity .14s ease; }
+.confirm-fade-enter-from, .confirm-fade-leave-to { opacity: 0; }
 </style>

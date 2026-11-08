@@ -7,7 +7,6 @@ import Toast from "../components/ui/Toast.vue";
 import ConfirmDialog from "../components/ui/ConfirmDialog.vue";
 import MarkdownRenderer from "../components/ui/MarkdownRenderer.vue";
 import draggable from "vuedraggable";
-import { exportToWord } from "../utils/export-docx"; // Import export utility
 
 const route = useRoute();
 const router = useRouter();
@@ -141,11 +140,9 @@ const handleKeydown = (e) => {
   if (e.key === 'Escape') {
     showMenu.value = false;
     showSettings.value = false;
-    showSheet.value = false;
-    showExportModal.value = false;
-    return;
+    showSheet.value = false;    return;
   }
-  if (showMenu.value || showSettings.value || showSheet.value || showExportModal.value || confirmDialog.show) return;
+  if (showMenu.value || showSettings.value || showSheet.value || confirmDialog.show) return;
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
   if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
@@ -851,62 +848,6 @@ const formatAnswer = (ans, type) => {
   return val;
 };
 
-// Print
-const showExportModal = ref(false);
-const exportConfig = reactive({
-    scope: 'wrong', // 'all' or 'wrong'
-    includeAnswer: true
-});
-
-const getExportData = () => {
-    let list = [];
-    if (exportConfig.scope === 'wrong') {
-        const wrongIds = Object.keys(userAnswers.value).filter(id => !userAnswers.value[id].isCorrect);
-        list = questions.value.filter(q => wrongIds.includes(String(q.id)));
-        if (list.length === 0) {
-            toast.value?.add("没有错题可导出", "warning");
-            return [];
-        }
-    } else {
-        list = questions.value;
-    }
-    return list;
-};
-
-const handleExportWord = async () => {
-    const list = getExportData();
-    if (list.length === 0) return;
-
-    try {
-        await exportToWord(list, `${subjectTitle.value || '试题'} - ${exportConfig.scope === 'wrong' ? '错题集' : '练习卷'}`, exportConfig.includeAnswer);
-        toast.value?.add("导出成功", "success");
-        showExportModal.value = false;
-    } catch (e) {
-        console.error(e);
-        toast.value?.add("导出失败", "error");
-    }
-};
-
-const handlePrint = () => {
-    // For print, we rely on the specific print-area div
-    // We need to update that div's content based on selection
-    // But currently the print-area is hardcoded for wrong questions.
-    // Let's just trigger window.print() and let the CSS handle hiding/showing.
-    // Wait, the current CSS print implementation only shows #print-area.
-    // And #print-area has v-for over WRONG questions.
-    // If user wants ALL, we need to change that logic or have two print areas.
-    // Simplified: Just print scope logic here.
-
-    // Actually, making print-area reactive to exportConfig is better.
-    window.print();
-    showExportModal.value = false;
-};
-
-const printQuestions = computed(() => {
-    if (exportConfig.scope === 'all') return questions.value;
-    return questions.value.filter(q => userAnswers.value[q.id] && !userAnswers.value[q.id].isCorrect);
-});
-
 // AI Tutor Logic
 const aiExplanation = ref("");
 const aiLoading = ref(false);
@@ -1077,12 +1018,12 @@ const handleAiExplain = async () => {
             </button>
             <p class="exam-menu-label">工具</p>
             <button
-                @click="showExportModal = true; showMenu = false"
+                @click="showMenu = false; router.push('/export')"
                 class="exam-menu-item"
                 role="menuitem"
             >
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
-                <span class="exam-menu-item-copy"><strong>导出与打印</strong><small>练习卷或错题集</small></span>
+                <span class="exam-menu-item-copy"><strong>题库导出</strong><small>需管理员生成的账户导出密码</small></span>
             </button>
             <button
                 @click="showSettings = true; showMenu = false"
@@ -1485,7 +1426,7 @@ const handleAiExplain = async () => {
     </nav>
 
     <!-- Answer Sheet Drawer -->
-    <div v-if="showSheet" class="fixed inset-0 z-50 flex justify-end print:hidden">
+    <div v-if="showSheet" class="exam-drawer-backdrop print:hidden">
       <!-- Backdrop -->
       <div
         class="absolute inset-0 bg-slate-900/20 backdrop-blur-[2px] transition-opacity"
@@ -1572,10 +1513,10 @@ const handleAiExplain = async () => {
         <!-- Actions -->
         <div class="exam-sheet-actions">
           <button
-            @click="showExportModal = true"
+            @click="showSheet = false; router.push('/export')"
             class="ui-btn ui-btn-outline"
           >
-            导出 / 打印
+            题库导出
           </button>
           <button
             @click="resetProgress"
@@ -1587,188 +1528,45 @@ const handleAiExplain = async () => {
       </div>
     </div>
 
-    <!-- Print Area -->
-    <div id="print-area" class="hidden print:block p-8 bg-white text-black font-serif">
-      <div class="text-center border-b-2 border-black pb-4 mb-6">
-          <h1 class="text-3xl font-bold mb-2">{{ exportConfig.scope === 'wrong' ? '错题集' : '练习卷' }}</h1>
-          <p class="text-sm">生成时间：{{ new Date().toLocaleString() }}</p>
-      </div>
-
-      <div class="columns-2 gap-8">
-
-          <div
-            v-for="(q, i) in printQuestions"
-            :key="q.id"
-            class="mb-6 break-inside-avoid"
-          >
-            <div class="flex items-baseline gap-1 mb-1 font-bold">
-                <span class="text-lg">{{ i + 1 }}.</span>
-                <span class="text-xs px-1 py-0.5 border rounded border-black ml-1">{{ q.content.type === 'single' ? '单选' : q.content.type === 'multiple' ? '多选' : '判断' }}</span>
-            </div>
-
-            <div class="font-medium text-base mb-2 leading-snug">
-              {{ q.content.question }}
-            </div>
-
-            <div v-if="q.content.options" class="pl-4 mb-2 space-y-0.5 text-sm">
-              <div v-for="(val, key) in q.content.options" :key="key">
-                <span class="font-bold">{{ key }}.</span> {{ val }}
-              </div>
-            </div>
-
-            <div v-if="exportConfig.includeAnswer" class="mt-2 p-2 bg-gray-100 border border-gray-300 rounded text-xs">
-              <div class="font-bold">正确答案：{{ formatAnswer(q.content.answer, q.content.type) }}</div>
-              <div class="mt-1 text-gray-700">
-                解析：{{ q.content.analysis || "无" }}
-              </div>
+    <!-- Settings Panel -->
+    <div v-if="showSettings" class="exam-modal-backdrop print:hidden" @click.self="showSettings = false">
+      <section class="exam-settings-panel" role="dialog" aria-modal="true" aria-label="做题设置">
+        <header class="exam-panel-head">
+          <div><h2>做题设置</h2><p>调整自动跳转、手势和阅读字号。</p></div>
+          <button class="exam-panel-close" type="button" aria-label="关闭做题设置" @click="showSettings = false">×</button>
+        </header>
+        <div class="exam-settings-body">
+          <div class="exam-setting-row">
+            <div class="exam-setting-copy"><strong>答对自动跳转</strong><p>单选和判断题答对后切换到下一题。</p></div>
+            <button class="exam-toggle" type="button" :class="{ 'is-on': autoAdvance }" :aria-pressed="autoAdvance" @click="autoAdvance = !autoAdvance"><span></span></button>
+          </div>
+          <div v-if="autoAdvance" class="exam-setting-detail">
+            <div class="exam-detail-line"><span>跳转延迟</span><strong>{{ autoAdvanceDelay }}ms</strong></div>
+            <input class="exam-range" type="range" v-model.number="autoAdvanceDelay" min="200" max="2000" step="100" />
+            <div class="exam-range-labels"><span>快 200ms</span><span>慢 2s</span></div>
+          </div>
+          <div class="exam-setting-row">
+            <div class="exam-setting-copy"><strong>滑动切换题目</strong><p>左右滑动切换上一题和下一题。</p></div>
+            <button class="exam-toggle" type="button" :class="{ 'is-on': swipeEnabled }" :aria-pressed="swipeEnabled" @click="swipeEnabled = !swipeEnabled"><span></span></button>
+          </div>
+          <div class="exam-setting-row">
+            <div class="exam-setting-copy"><strong>震动反馈</strong><p>答题和滑动时提供触觉反馈，仅支持部分设备。</p></div>
+            <button class="exam-toggle" type="button" :class="{ 'is-on': hapticFeedback }" :aria-pressed="hapticFeedback" @click="hapticFeedback = !hapticFeedback"><span></span></button>
+          </div>
+          <div class="exam-setting-block">
+            <span class="exam-setting-label">题目字体大小</span>
+            <div class="exam-segmented">
+              <button type="button" :class="{ 'is-active': fontSize === 'small' }" @click="fontSize = 'small'">小</button>
+              <button type="button" :class="{ 'is-active': fontSize === 'normal' }" @click="fontSize = 'normal'">中</button>
+              <button type="button" :class="{ 'is-active': fontSize === 'large' }" @click="fontSize = 'large'">大</button>
             </div>
           </div>
-      </div>
-
-      <div
-        v-if="printQuestions.length === 0"
-        class="text-center py-10 italic"
-      >
-        没有错题需要打印，继续保持！
-      </div>
-    </div>
-
-    <!-- Settings Panel -->
-    <div v-if="showSettings" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 print:hidden">
-        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showSettings = false"></div>
-        <div class="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-t-3xl sm:rounded-2xl shadow-2xl animate-slide-up overflow-hidden">
-            <!-- Header -->
-            <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700/50">
-                <div class="flex items-center gap-3">
-                    <span class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-500 dark:text-slate-300">
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.1.36.32.7.6 1 .3.26.7.4 1.1.4h.09v4h-.09a1.7 1.7 0 0 0-1.7.6Z"/></svg>
-                    </span>
-                    <div>
-                        <h3 class="font-bold text-slate-800 dark:text-slate-100">做题设置</h3>
-                        <p class="text-[11px] text-slate-400">自定义你的做题体验</p>
-                    </div>
-                </div>
-                <button @click="showSettings = false" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm">✕</button>
-            </div>
-
-            <div class="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
-                <!-- Auto Advance -->
-                <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl">
-                    <div class="flex-1 mr-4">
-                        <div class="flex items-center gap-2">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="text-slate-500" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z"/></svg>
-                            <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">答对自动跳转</span>
-                        </div>
-                        <p class="text-[11px] text-slate-400 mt-1 ml-7">单选/判断答对后自动切换到下一题</p>
-                    </div>
-                    <button
-                        @click="autoAdvance = !autoAdvance"
-                        class="w-12 h-7 rounded-full transition-all duration-300 relative shrink-0"
-                        :class="autoAdvance ? 'bg-indigo-500 shadow-md shadow-indigo-500/30' : 'bg-slate-200 dark:bg-slate-600'"
-                    >
-                        <span class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm" :class="autoAdvance ? 'translate-x-5' : ''"></span>
-                    </button>
-                </div>
-
-                <!-- Auto Advance Delay -->
-                <div v-if="autoAdvance" class="px-4 py-3 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 animate-fade-in-up">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">跳转延迟</span>
-                        <span class="text-xs font-mono font-bold text-indigo-500 bg-indigo-100 dark:bg-indigo-900/30 px-2 py-0.5 rounded-md">{{ autoAdvanceDelay }}ms</span>
-                    </div>
-                    <input
-                        type="range"
-                        v-model.number="autoAdvanceDelay"
-                        min="200" max="2000" step="100"
-                        class="w-full h-1.5 bg-indigo-200 dark:bg-indigo-900/50 rounded-full appearance-none cursor-pointer accent-indigo-500"
-                    >
-                    <div class="flex justify-between text-[10px] text-indigo-400 mt-1">
-                        <span>快 (200ms)</span>
-                        <span>慢 (2s)</span>
-                    </div>
-                </div>
-
-                <!-- Swipe Gesture -->
-                <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl">
-                    <div class="flex-1 mr-4">
-                        <div class="flex items-center gap-2">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="text-slate-500" aria-hidden="true"><path d="M5 12h14M12 5l-7 7 7 7M12 5l7 7-7 7"/></svg>
-                            <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">滑动切换题目</span>
-                        </div>
-                        <p class="text-[11px] text-slate-400 mt-1 ml-7">左右滑动手势切换上/下一题</p>
-                    </div>
-                    <button
-                        @click="swipeEnabled = !swipeEnabled"
-                        class="w-12 h-7 rounded-full transition-all duration-300 relative shrink-0"
-                        :class="swipeEnabled ? 'bg-indigo-500 shadow-md shadow-indigo-500/30' : 'bg-slate-200 dark:bg-slate-600'"
-                    >
-                        <span class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm" :class="swipeEnabled ? 'translate-x-5' : ''"></span>
-                    </button>
-                </div>
-                <!-- Haptic Feedback -->
-                <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl">
-                    <div class="flex-1 mr-4">
-                        <div class="flex items-center gap-2">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="text-slate-500" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 8v8M21 8v8"/></svg>
-                            <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">震动反馈</span>
-                        </div>
-                        <p class="text-[11px] text-slate-400 mt-1 ml-7">答题和滑动时提供触觉反馈 (仅支持部分设备)</p>
-                    </div>
-                    <button
-                        @click="hapticFeedback = !hapticFeedback"
-                        class="w-12 h-7 rounded-full transition-all duration-300 relative shrink-0"
-                        :class="hapticFeedback ? 'bg-indigo-500 shadow-md shadow-indigo-500/30' : 'bg-slate-200 dark:bg-slate-600'"
-                    >
-                        <span class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm" :class="hapticFeedback ? 'translate-x-5' : ''"></span>
-                    </button>
-                </div>
-
-                <!-- Font Size -->
-                <div class="p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="text-base">Aa</span>
-                        <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">题目字体大小</span>
-                    </div>
-                    <div class="flex bg-slate-200/50 dark:bg-slate-800 rounded-xl p-1">
-                        <button
-                            @click="fontSize = 'small'"
-                            class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all"
-                            :class="fontSize === 'small' ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
-                        >小</button>
-                        <button
-                            @click="fontSize = 'normal'"
-                            class="flex-1 py-1.5 rounded-lg text-sm font-bold transition-all"
-                            :class="fontSize === 'normal' ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
-                        >中</button>
-                        <button
-                            @click="fontSize = 'large'"
-                            class="flex-1 py-1.5 rounded-lg text-base font-bold transition-all"
-                            :class="fontSize === 'large' ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
-                        >大</button>
-                    </div>
-                </div>
-                <!-- Keyboard Hints -->
-                <div class="p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="text-base">⌨️</span>
-                        <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">快捷键</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-slate-600 font-mono text-[10px] shadow-sm">←</kbd>
-                            <span>上一题</span>
-                        </div>
-                        <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-slate-600 font-mono text-[10px] shadow-sm">→</kbd>
-                            <span>下一题</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- iOS Home Indicator Space -->
-            <div class="h-safe" style="padding-bottom: 24px; padding-bottom: env(safe-area-inset-bottom, 24px);"></div>
+          <div class="exam-setting-block">
+            <span class="exam-setting-label">键盘快捷键</span>
+            <div class="exam-keyboard-grid"><span><kbd>←</kbd> 上一题</span><span><kbd>→</kbd> 下一题</span></div>
+          </div>
         </div>
+      </section>
     </div>
 
     <Toast ref="toast" />
@@ -1780,61 +1578,6 @@ const handleAiExplain = async () => {
       @confirm="confirmDialog.onConfirm"
       @cancel="confirmDialog.onCancel"
     />
-
-    <!-- Export Modal -->
-    <div v-if="showExportModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
-        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showExportModal = false"></div>
-        <div class="relative w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 space-y-6 animate-fade-in-up">
-            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">导出与打印</h3>
-
-            <div class="space-y-4">
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase">导出内容</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button
-                            @click="exportConfig.scope = 'all'"
-                            class="p-3 rounded-xl border text-sm font-bold transition-all"
-                            :class="exportConfig.scope === 'all' ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 dark:border-slate-700 text-slate-500'"
-                        >当前已加载题目</button>
-                        <button
-                            @click="exportConfig.scope = 'wrong'"
-                            class="p-3 rounded-xl border text-sm font-bold transition-all"
-                            :class="exportConfig.scope === 'wrong' ? 'border-rose-500 bg-rose-50 text-rose-600' : 'border-slate-200 dark:border-slate-700 text-slate-500'"
-                        >仅错题</button>
-                    </div>
-                </div>
-
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase">包含答案</label>
-                     <div class="flex items-center gap-2">
-                        <button
-                            @click="exportConfig.includeAnswer = !exportConfig.includeAnswer"
-                            class="w-10 h-6 rounded-full transition-colors relative"
-                            :class="exportConfig.includeAnswer ? 'bg-indigo-500' : 'bg-slate-200 dark:bg-slate-700'"
-                        >
-                            <span class="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform" :class="exportConfig.includeAnswer ? 'translate-x-4' : ''"></span>
-                        </button>
-                        <span class="text-sm text-slate-600 dark:text-slate-300">{{ exportConfig.includeAnswer ? '包含答案与解析' : '仅题目 (测试卷)' }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="pt-2 flex gap-3">
-                <button
-                    @click="handleExportWord"
-                    class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
-                >
-                    导出 Word
-                </button>
-                <button
-                    @click="handlePrint"
-                    class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2"
-                >
-                    直接打印
-                </button>
-            </div>
-        </div>
-    </div>
   </div>
 </template>
 
@@ -1959,23 +1702,6 @@ body {
   overscroll-behavior-y: contain;
 }
 
-/* === Print === */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #print-area,
-  #print-area * {
-    visibility: visible;
-  }
-  #print-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
-}
-
 /* === Responsive Fine-tuning === */
 @media (max-width: 640px) {
   .glass-card {
@@ -1989,5 +1715,42 @@ body {
     transform: scale(0.97);
     transition: transform 0.1s;
   }
+}
+
+/* Neutral exam settings panel */
+.exam-drawer-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end; }
+.exam-modal-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15,23,42,.38); backdrop-filter: blur(3px); }
+.exam-settings-panel { width: min(460px, 100%); max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-card); box-shadow: 0 24px 60px rgba(15,23,42,.18); }
+.exam-panel-head { flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.exam-panel-head h2 { margin: 0; color: var(--text-main); font-size: 15px; font-weight: 650; }
+.exam-panel-head p { margin-top: 3px; color: var(--text-quote); font-size: 10px; }
+.exam-panel-close { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; border-radius: 7px; color: var(--text-quote); font-size: 18px; }
+.exam-panel-close:hover { background: var(--bg-card-highlight); color: var(--text-main); }
+.exam-settings-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 20px 18px; }
+.exam-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.exam-setting-copy { min-width: 0; }
+.exam-setting-copy strong { display: block; color: var(--text-main); font-size: 13px; font-weight: 550; }
+.exam-setting-copy p { margin-top: 4px; color: var(--text-quote); font-size: 10px; line-height: 1.55; }
+.exam-toggle { position: relative; width: 42px; height: 24px; flex: 0 0 42px; border-radius: 999px; background: var(--border-strong); transition: background .16s ease; }
+.exam-toggle span { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--bg-card); box-shadow: 0 1px 2px rgba(15,23,42,.14); transition: transform .16s ease; }
+.exam-toggle.is-on { background: var(--primary); }
+.exam-toggle.is-on span { transform: translateX(18px); }
+.exam-setting-detail { padding: 12px 0 15px; border-bottom: 1px solid var(--border); }
+.exam-detail-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-sub); font-size: 11px; }
+.exam-detail-line strong { color: var(--text-main); font-size: 11px; font-weight: 550; }
+.exam-range { width: 100%; margin-top: 12px; accent-color: var(--primary); }
+.exam-range-labels { display: flex; justify-content: space-between; margin-top: 5px; color: var(--text-quote); font-size: 9px; }
+.exam-setting-block { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.exam-setting-block:last-child { border-bottom: 0; padding-bottom: 4px; }
+.exam-setting-label { display: block; margin-bottom: 9px; color: var(--text-quote); font-size: 10px; font-weight: 600; letter-spacing: .08em; }
+.exam-segmented { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card-highlight); }
+.exam-segmented button { flex: 1; min-height: 32px; border-radius: 6px; color: var(--text-sub); font-size: 12px; }
+.exam-segmented button.is-active { background: var(--bg-card); color: var(--text-main); font-weight: 600; box-shadow: var(--shadow); }
+.exam-keyboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; color: var(--text-sub); font-size: 11px; }
+.exam-keyboard-grid span { display: flex; align-items: center; gap: 6px; }
+.exam-keyboard-grid kbd { min-width: 24px; padding: 3px 5px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-card-highlight); color: var(--text-main); font-family: ui-monospace, monospace; font-size: 10px; text-align: center; }
+@media (max-width: 600px) {
+  .exam-modal-backdrop { align-items: flex-end; padding: 0; }
+  .exam-settings-panel { width: 100%; max-height: 92vh; border-radius: 16px 16px 0 0; }
 }
 </style>

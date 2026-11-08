@@ -152,7 +152,7 @@ onMounted(fetchSchedule);
             v-for="(period, pidx) in PERIODS"
             :key="period"
             :class="pidx % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-750'"
-            class="group hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-colors"
+            class="group hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
           >
             <td class="px-4 py-2 border-b border-slate-100 dark:border-slate-700 font-bold text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
               {{ getPeriodLabel(period) }}

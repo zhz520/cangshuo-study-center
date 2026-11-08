@@ -72,8 +72,8 @@
     </div>
 
     <!-- Records Sidebar/Modal Overlay -->
-    <div v-if="drawerVisible" class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 transition-all animate-fade-in">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-4xl h-full flex flex-col animate-slide-left border-l border-slate-200 dark:border-slate-700">
+    <div v-if="drawerVisible" class="admin-drawer-backdrop">
+        <div class="admin-drawer-panel">
             <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                 <div>
                   <h3 class="text-xl text-slate-800 dark:text-white">考试记录</h3>
@@ -158,8 +158,8 @@
     </div>
 
     <!-- Questions Management Drawer -->
-    <div v-if="questionsDrawerVisible" class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 transition-all animate-fade-in">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-5xl h-full flex flex-col animate-slide-left border-l border-slate-200 dark:border-slate-700">
+    <div v-if="questionsDrawerVisible" class="admin-drawer-backdrop">
+        <div class="admin-drawer-panel is-wide">
             <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
                 <div>
                    <h3 class="text-xl text-slate-800 dark:text-white flex items-center gap-2">

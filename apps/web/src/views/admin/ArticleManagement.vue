@@ -463,22 +463,13 @@ watch(
 
               <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">正文内容</label>
               <div class="flex gap-2 mb-3">
-                <button
-                  type="button"
-                  class="px-3 py-1.5 text-xs font-bold rounded-full border transition-colors admin-control"
-                  :class="editMode === 'html'
-                    ? 'bg-indigo-500 text-white border-indigo-500 shadow-sm'
-                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'"
-                  @click="editMode = 'html'"
-                >
+                <button type="button" class="ui-chip ui-chip-soft" :class="{ active: editMode === 'html' }" @click="editMode = 'html'">
                   富文本编辑
                 </button>
                 <button
                   type="button"
-                  class="px-3 py-1.5 text-xs font-bold rounded-full border transition-colors admin-control"
-                  :class="editMode === 'markdown'
-                    ? 'bg-indigo-500 text-white border-indigo-500 shadow-sm'
-                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'"
+                  class="ui-chip ui-chip-soft"
+                  :class="{ active: editMode === 'markdown' }"
                   @click="editMode = 'markdown'"
                 >
                   Markdown 编辑

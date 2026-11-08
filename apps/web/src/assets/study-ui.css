@@ -623,11 +623,20 @@ tbody td { color: var(--text-sub); }
 
 /* Admin CRUD pages keep their features while sharing the product palette. */
 .admin-content .bg-indigo-600 { background-color: var(--text-main) !important; }
+.admin-content .bg-indigo-500 { background-color: var(--text-main) !important; }
 .admin-content .hover\:bg-indigo-700:hover { background-color: color-mix(in srgb, var(--text-main) 88%, var(--bg-card)) !important; }
 .admin-content .text-indigo-600, .admin-content .text-indigo-500 { color: var(--text-sub) !important; }
 .admin-content .bg-indigo-50 { background-color: var(--bg-card-highlight) !important; }
 .admin-content .rounded-3xl, .admin-content .rounded-\[32px\], .admin-content .rounded-\[30px\] { border-radius: var(--radius) !important; }
 .admin-content .shadow-xl, .admin-content .shadow-2xl { box-shadow: var(--shadow) !important; }
+.admin-content [class*="shadow-indigo"] { box-shadow: none !important; }
+
+.admin-workspace [class*="fixed inset-0"] { background: rgba(15,23,42,.38) !important; backdrop-filter: blur(3px); }
+.admin-workspace [class*="fixed inset-0"] > div[class~="bg-white"] { border: 1px solid var(--border) !important; background: var(--bg-card) !important; box-shadow: 0 24px 60px rgba(15,23,42,.18) !important; }
+.admin-drawer-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; justify-content: flex-end; background: rgba(15,23,42,.38) !important; backdrop-filter: blur(3px); }
+.admin-drawer-panel { width: min(860px, 100%); height: 100%; display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid var(--border); background: var(--bg-card); box-shadow: -18px 0 50px rgba(15,23,42,.14); }
+.admin-drawer-panel.is-wide { width: min(1040px, 100%); }
+@media (max-width: 760px) { .admin-drawer-panel { width: 100%; border-left: 0; } }
 
 .admin-workspace { width:100%; max-width:none!important; padding:0!important; }
 .admin-workspace .uppercase { text-transform:none!important; }
