@@ -3,6 +3,7 @@ package cn.zhzgo.study.ui.screens
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -62,10 +63,10 @@ fun ProfileScreen(onSettings: () -> Unit, onAccount: () -> Unit, onSubscription:
             Surface(onClick = onSubscription, color = Color(0xFF141A24), shape = RoundedCornerShape(14.dp)) {
                 Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(36.dp).background(Color.White.copy(alpha = .08f), RoundedCornerShape(10.dp))
-                        .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(10.dp)),
+                    Box(Modifier.size(36.dp).background(Color.White.copy(alpha = .04f), CircleShape)
+                        .border(1.dp, Color(0xFFE4C36B).copy(alpha = .58f), CircleShape),
                         contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.WorkspacePremium, null, Modifier.size(21.dp), tint = Color(0xFFE4C36B))
+                        PlusMark(Modifier.size(14.dp), tint = Color(0xFFE4C36B))
                     }
                     Column(Modifier.weight(1f)) {
                         Text(if (plus) "Plus 会员特权已启用" else "升级 Plus 会员", style = MaterialTheme.typography.titleSmall,

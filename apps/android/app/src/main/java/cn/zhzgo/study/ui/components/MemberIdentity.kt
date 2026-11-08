@@ -18,7 +18,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -36,21 +38,16 @@ private fun memberTone(style: String) = when (style) {
     else -> MaterialTheme.colorScheme.onSurface.copy(alpha = .62f)
 }
 
-/** A restrained four-point mark that matches the product's star/book logo. */
+/** A clean plus glyph used by the Plus membership badge. */
 @Composable
 fun PlusMark(modifier: Modifier = Modifier, tint: Color = MaterialTheme.colorScheme.primary) {
     Canvas(modifier) {
-        val cx = size.width / 2f
-        val cy = size.height / 2f
-        val path = Path().apply {
-            moveTo(cx, 0f)
-            quadraticTo(cx + size.width * .07f, cy - size.height * .07f, size.width, cy)
-            quadraticTo(cx + size.width * .07f, cy + size.height * .07f, cx, size.height)
-            quadraticTo(cx - size.width * .07f, cy + size.height * .07f, 0f, cy)
-            quadraticTo(cx - size.width * .07f, cy - size.height * .07f, cx, 0f)
-            close()
-        }
-        drawPath(path, tint)
+        val thickness = size.minDimension * .22f
+        val radius = CornerRadius(thickness / 2f, thickness / 2f)
+        drawRoundRect(tint, topLeft = Offset((size.width - thickness) / 2f, 0f),
+            size = Size(thickness, size.height), cornerRadius = radius)
+        drawRoundRect(tint, topLeft = Offset(0f, (size.height - thickness) / 2f),
+            size = Size(size.width, thickness), cornerRadius = radius)
     }
 }
 
@@ -75,11 +72,11 @@ fun MemberAvatar(url: String?, appearance: MemberAppearance? = null, size: Dp = 
             Surface(
                 modifier = Modifier.align(Alignment.BottomEnd).size(badgeSize),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, tone.copy(alpha = .38f)),
+                color = tone,
+                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    PlusMark(Modifier.size(badgeSize * .5f), tint = tone)
+                    PlusMark(Modifier.size(badgeSize * .48f), tint = MaterialTheme.colorScheme.surface)
                 }
             }
         }
@@ -91,17 +88,16 @@ fun MemberLabel(appearance: MemberAppearance?) {
     if (appearance?.is_plus != true || !appearance.badge_visible) return
     val tone = memberTone(appearance.avatar_frame)
     Surface(
-        color = Color.Transparent,
+        color = tone.copy(alpha = .10f),
         shape = RoundedCornerShape(4.dp),
-        border = BorderStroke(1.dp, tone.copy(alpha = .30f)),
     ) {
         Row(
-            Modifier.padding(horizontal = 5.dp, vertical = 2.dp).semantics { contentDescription = "Plus 会员" },
+            Modifier.padding(horizontal = 6.dp, vertical = 2.dp).semantics { contentDescription = "Plus 会员" },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            PlusMark(Modifier.size(8.dp), tint = tone)
-            Text("PLUS", color = tone, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .55.sp)
+            PlusMark(Modifier.size(7.dp), tint = tone)
+            Text("PLUS", color = tone, fontSize = 8.5.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .5.sp)
         }
     }
 }

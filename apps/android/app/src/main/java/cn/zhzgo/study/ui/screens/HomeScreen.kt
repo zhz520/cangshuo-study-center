@@ -56,7 +56,7 @@ fun HomeScreen(onContinue: (Int, String) -> Unit, onBank: () -> Unit, onLearning
                     Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(if(plus && memory.greeting.isNotBlank())memory.greeting else "保持专注，一起进步", style = MaterialTheme.typography.titleSmall,
                             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                        PlusMark(Modifier.padding(start = 6.dp).size(9.dp), tint = Color(0xFFC9A44C))
+                        Text("✦", color = Color(0xFFC9A44C), fontSize = 10.sp, modifier = Modifier.padding(start = 6.dp))
                     }
                 }
                 IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, "搜索题目", Modifier.size(22.dp)) }
