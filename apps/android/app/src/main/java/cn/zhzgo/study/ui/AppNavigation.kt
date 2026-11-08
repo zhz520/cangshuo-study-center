@@ -90,6 +90,18 @@ fun AppNavigation() {
         }
     }
 
+    val openAdmin: () -> Unit = {
+        val token = if (authState != "loading") authState else ""
+        val adminUrl = "https://study.zhzgo.cn/admin?token=$token&role=admin"
+        val builder = CustomTabsIntent.Builder()
+        builder.setDefaultColorSchemeParams(
+            androidx.browser.customtabs.CustomTabColorSchemeParams.Builder()
+                .setToolbarColor(android.graphics.Color.parseColor("#121212"))
+                .build()
+        )
+        runCatching { builder.build().launchUrl(context, Uri.parse(adminUrl)) }
+    }
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route?.substringBefore("/")
 
@@ -271,22 +283,12 @@ fun AppNavigation() {
                   onProfile={openTab("profile")},onFavorites={navController.navigate("favorites")},onSearch={navController.navigate("search")},onExam={navController.navigate("exam_list")},onSchedule={navController.navigate("schedule")})
         }
         composable("profile") {
-            ProfileScreen(onSettings={navController.navigate("settings")},onAccount={navController.navigate("account_settings")},onPersonalize={navController.navigate("personalization")},
-                onSubscription={navController.navigate("subscription_plus")},onPublicProfile={navController.navigate("user_profile/me")},onSettingsAction={action->navController.navigate("settings?action=$action")},onScore={navController.navigate("tools/score_query")},
-                onAdmin={
-                    val token = if (authState != "loading") authState else ""
-                    val adminUrl = "https://study.zhzgo.cn/admin?token=$token&role=admin"
-                    val builder = androidx.browser.customtabs.CustomTabsIntent.Builder()
-
-                    // Match app's dark mode aesthetic if possible
-                    val colorSchemeParams = androidx.browser.customtabs.CustomTabColorSchemeParams.Builder()
-                        .setToolbarColor(android.graphics.Color.parseColor("#121212"))
-                        .build()
-                    builder.setDefaultColorSchemeParams(colorSchemeParams)
-
-                    val customTabsIntent = builder.build()
-                    customTabsIntent.launchUrl(context, android.net.Uri.parse(adminUrl))
-                })
+            ProfileScreen(
+                onSettings = { navController.navigate("settings") },
+                onAccount = { navController.navigate("account_settings") },
+                onSubscription = { navController.navigate("subscription_plus") },
+                onPublicProfile = { navController.navigate("user_profile/me") }
+            )
         }
         composable("learning") {
             MistakesScreen(onBack={navController.navigateUp()},onSubject={id,name->
@@ -451,7 +453,9 @@ fun AppNavigation() {
                 },
                 onNavigateToSubscription = {
                     navController.navigate("subscription_plus")
-                }
+                },
+                onScore = { navController.navigate("tools/score_query") },
+                onAdmin = openAdmin
             )
         }
 
