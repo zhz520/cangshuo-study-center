@@ -4,11 +4,16 @@ import './style.css'
 import './assets/theme.css'
 import './assets/study-ui.css'
 import App from './App.vue'
+import GlobalFeedback from './components/ui/GlobalFeedback.vue'
 import router from './router'
 import 'nprogress/nprogress.css' // Global Progress Bar
 import { applyTheme } from './utils/theme'
 
 applyTheme()
+
+const feedbackHost = document.createElement('div')
+document.body.appendChild(feedbackHost)
+createApp(GlobalFeedback).mount(feedbackHost)
 
 const app = createApp(App)
 

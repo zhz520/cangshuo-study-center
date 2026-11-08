@@ -5,6 +5,7 @@ import { data as api } from "../api";
 import { normalizeQuestion } from "../utils/question-normalizer";
 import Toast from "../components/ui/Toast.vue";
 import ConfirmDialog from "../components/ui/ConfirmDialog.vue";
+import LoadingState from "../components/ui/LoadingState.vue";
 import MarkdownRenderer from "../components/ui/MarkdownRenderer.vue";
 import draggable from "vuedraggable";
 
@@ -1049,10 +1050,7 @@ const handleAiExplain = async () => {
       @touchmove.passive="onTouchMove"
       @touchend.passive="onTouchEnd"
     >
-      <div v-if="loading" class="exam-loading">
-          <div class="ui-spinner"></div>
-          <p>加载试题中…</p>
-      </div>
+      <LoadingState v-if="loading" label="加载试题中…" />
 
       <div v-else-if="loadError" class="exam-error" role="alert">{{ loadError }}</div>
       <div
@@ -1595,59 +1593,6 @@ const handleAiExplain = async () => {
 .slide-left-leave-to { opacity: 0; transform: translateX(40px); }
 
 /* === Base Animations === */
-.animate-fade-in-up {
-  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.animate-slide-left {
-  animation: slideLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.animate-slide-up {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes slideLeft {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* === Scrollbar Utilities === */
-.scrollbar-hide::-webkit-scrollbar { display: none; }
-.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* === Glassmorphism === */
-.glass-nav {
-  background-color: rgba(255, 255, 255, 0.85);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
-}
-.dark .glass-nav {
-  background-color: rgba(15, 23, 42, 0.85);
-  border-bottom: 1px solid rgba(30, 41, 59, 0.5);
-}
-
-.glass-card {
-  background-color: rgba(255, 255, 255, 0.85);
-  backdrop-filter: saturate(120%) blur(12px);
-  -webkit-backdrop-filter: saturate(120%) blur(12px);
-  border: 1px solid rgba(229, 231, 235, 0.5);
-  border-radius: 1.25rem;
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06), 0 2px 8px -2px rgba(0, 0, 0, 0.04);
-}
-.dark .glass-card {
-  background-color: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(71, 85, 105, 0.5);
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.2), 0 2px 8px -2px rgba(0, 0, 0, 0.1);
-}
-
 /* === Cross-Device Touch & Scroll === */
 .exam-content {
   -webkit-overflow-scrolling: touch; /* iOS smooth scroll */

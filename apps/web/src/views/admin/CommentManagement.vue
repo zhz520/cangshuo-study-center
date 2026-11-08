@@ -3,6 +3,7 @@ import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
 import { ref, onMounted, computed, watch } from 'vue';
 import { admin } from '../../api';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
+import { notify } from '../../utils/feedback';
 
 const comments = ref([]);
 const loading = ref(false);
@@ -59,7 +60,7 @@ const updateStatus = async (comment, status) => {
         await admin.updateAdminCommentStatus(comment.id, status);
         await fetchComments();
     } catch (e) {
-        alert('操作失败: ' + (e.response?.data?.error || e.message));
+        notify('操作失败: ' + (e.response?.data?.error || e.message), 'error');
     }
 };
 
@@ -77,7 +78,7 @@ const deleteComment = async (comment) => {
             await admin.deleteAdminComment(comment.id);
             await fetchComments();
         } catch (e) {
-            alert('删除失败: ' + (e.response?.data?.error || e.message));
+            notify('删除失败: ' + (e.response?.data?.error || e.message), 'error');
         }
     }
 };

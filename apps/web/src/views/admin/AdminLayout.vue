@@ -4,6 +4,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 import { getTheme, toggleTheme as toggleStoredTheme } from '../../utils/theme';
+import { confirmAction } from '../../utils/feedback';
 
 const router = useRouter();
 const route = useRoute();
@@ -60,7 +61,7 @@ const toggleTheme = () => {
 const logout = async () => {
   const confirmed = confirmDialog.value ? await confirmDialog.value.confirm({
     title: '退出管理后台', message: '确认退出当前账号？', confirmText: '退出', cancelText: '取消', type: 'danger',
-  }) : window.confirm('确认退出当前账号？');
+  }) : await confirmAction({ title: '退出管理后台', message: '确认退出当前账号？', confirmText: '退出', type: 'danger' });
   if (!confirmed) return;
   try { const { auth } = await import('../../api'); await auth.logout(); } catch {}
   localStorage.removeItem('token');

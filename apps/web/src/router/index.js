@@ -1,10 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import NProgress from 'nprogress'
 import { auth } from '../api'
-import HomeView from '../views/HomeView.vue'
-import LoginView from '../views/LoginView.vue'
-import RegisterView from '../views/RegisterView.vue'
-import ExamView from '../views/ExamView.vue'
-import LandingView from '../views/LandingView.vue'
+import { notify, confirmAction } from '../utils/feedback'
+
+const LandingView = () => import('../views/LandingView.vue')
+const HomeView = () => import('../views/HomeView.vue')
+const LoginView = () => import('../views/LoginView.vue')
+const RegisterView = () => import('../views/RegisterView.vue')
+const ExamView = () => import('../views/ExamView.vue')
+
+NProgress.configure({ showSpinner: false, trickleSpeed: 120, minimum: 0.1 })
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -185,6 +190,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+    NProgress.start()
     // Intercept native Android/iOS WebView token injection
     if (typeof to.query.token === 'string') {
         localStorage.setItem('token', to.query.token);
@@ -224,10 +230,16 @@ router.beforeEach(async (to, from, next) => {
         if (user && user.role === 'admin') {
             next();
         } else if (user && user.role === 'demo') {
-            alert('演示账号不能进入管理后台，请使用学习页面。');
+            notify('演示账号不能进入管理后台，请使用学习页面。', 'warning');
             next({ path: '/home' });
         } else {
-            if (confirm('权限不足: 需要管理员身份。\n是否退出当前账号并重新登录？')) {
+            const relogin = await confirmAction({
+                title: '权限不足',
+                message: '进入管理后台需要管理员身份。是否退出当前账号并重新登录？',
+                confirmText: '重新登录',
+                cancelText: '返回首页'
+            });
+            if (relogin) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('refreshToken');
                 localStorage.removeItem('user');
@@ -243,8 +255,14 @@ router.beforeEach(async (to, from, next) => {
 
 // Dynamic document title for SEO
 router.afterEach((to) => {
+    NProgress.done()
     const defaultTitle = '烁学 - AI 智能刷题平台';
     document.title = to.meta.title || defaultTitle;
+});
+
+router.onError((error) => {
+    NProgress.done();
+    console.error('Route loading failed', error);
 });
 
 export default router

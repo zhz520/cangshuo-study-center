@@ -7,6 +7,7 @@ import * as echarts from 'echarts';
 import markdownit from 'markdown-it';
 import Toast from '../components/ui/Toast.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
+import LoadingState from '../components/ui/LoadingState.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -346,7 +347,7 @@ const overallAccuracy = computed(() => {
       </template>
     </PageHeader>
 
-    <div v-if="loading" class="ui-card ui-loading"><span class="ui-spinner mx-auto"></span><p class="mt-3">正在加载诊断数据</p></div>
+    <LoadingState v-if="loading" label="正在加载诊断数据" />
     <template v-else>
       <section class="ui-grid ui-grid-4 diagnosis-metrics">
         <div class="ui-card ui-card-pad ui-metric"><span class="ui-metric-value">{{ overallTotalQuestions }}</span><span class="ui-metric-label">累计作答</span></div>
@@ -395,30 +396,6 @@ const overallAccuracy = computed(() => {
 .dark .glass-nav {
   background-color: rgba(15, 23, 42, 0.8);
   border-bottom: 1px solid rgba(30, 41, 59, 0.5);
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 1.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
-  transition: all 0.3s ease;
-}
-.dark .glass-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Custom Scrollbar */

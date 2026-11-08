@@ -27,6 +27,9 @@
   --shadow-glass: none;
   --bg-glass: #ffffff;
   --border-glass: #e5e7eb;
+  --motion-fast: .14s;
+  --motion-base: .2s;
+  --ease-out: cubic-bezier(.2,.8,.2,1);
 }
 
 html.dark {
@@ -183,6 +186,10 @@ body {
 .ui-empty-state-mark { width: 26px; height: 1px; margin-bottom: 6px; background: var(--border-strong); }
 .ui-empty-state strong { color: var(--text-main); font-size: 13px; font-weight: 550; }
 .ui-empty-state p { max-width: 340px; color: var(--text-quote); font-size: 11px; line-height: 1.7; }
+.ui-loading-state, .ui-error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 48px 20px; text-align: center; }
+.ui-loading-state strong, .ui-error-state strong { color: var(--text-main); font-size: 12px; font-weight: 550; }
+.ui-loading-state p, .ui-error-state p { max-width: 360px; color: var(--text-sub); font-size: 11px; line-height: 1.7; }
+.ui-error-state strong { color: var(--danger); }
 @media (max-width: 640px) {
   .page-header { align-items: flex-start; flex-direction: column; gap: 12px; }
   .page-header-actions { width: 100%; }
@@ -279,6 +286,12 @@ body {
 .ui-empty, .ui-loading { padding: 44px 20px; text-align: center; color: var(--text-sub); font-size: 13px; }
 .ui-spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: ui-spin .8s linear infinite; }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
+@keyframes ui-fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ui-scale-in { from { opacity: 0; transform: translateY(4px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes ui-slide-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in-up { animation: ui-fade-up var(--motion-base) var(--ease-out) both !important; }
+.animate-scale-up { animation: ui-scale-in var(--motion-fast) var(--ease-out) both !important; }
+.animate-slide-up { animation: ui-slide-up var(--motion-base) var(--ease-out) both !important; }
 .ui-skeleton { background: var(--bg-card-highlight); border-radius: 10px; animation: ui-pulse 1.2s ease-in-out infinite; }
 @keyframes ui-pulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
 
@@ -363,7 +376,7 @@ tbody td { color: var(--text-sub); }
 #nprogress .bar { background: var(--primary) !important; height: 2px !important; }
 #nprogress .peg { box-shadow: 0 0 10px var(--primary), 0 0 5px var(--primary) !important; }
 
-.page-fade-enter-active, .page-fade-leave-active { transition: opacity .14s ease, transform .14s ease; }
+.page-fade-enter-active, .page-fade-leave-active { transition: opacity var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out); }
 .page-fade-enter-from { opacity: 0; transform: translateY(4px); }
 .page-fade-leave-to { opacity: 0; transform: translateY(-2px); }
 

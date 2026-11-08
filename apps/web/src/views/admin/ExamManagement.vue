@@ -308,6 +308,7 @@ import { ref, onMounted } from 'vue';
 import { admin } from '../../api';
 import Toast from '../../components/ui/Toast.vue';
 import { exportRecordToWord } from '../../utils/export-record-docx.js';
+import { confirmAction } from '../../utils/feedback';
 
 const papers = ref([]);
 const loadingPapers = ref(false);
@@ -475,7 +476,8 @@ const openEditPaperQuestion = (q) => {
 };
 
 const deletePaperQuestion = async (id) => {
-    if (!confirm('确定要从试卷中移除这道题目吗？')) return;
+    const ok = await confirmAction({ title: '移除试卷题目', message: '确定要从试卷中移除这道题目吗？', confirmText: '移除', type: 'danger' });
+    if (!ok) return;
     try {
         await admin.deleteExamQuestion(id);
         toast.value?.add('删除成功', 'success');

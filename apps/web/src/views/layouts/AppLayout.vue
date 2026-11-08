@@ -4,6 +4,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { auth } from '../../api';
 import { getTheme, toggleTheme as toggleStoredTheme } from '../../utils/theme';
+import { confirmAction } from '../../utils/feedback';
 
 const route = useRoute();
 const router = useRouter();
@@ -59,7 +60,8 @@ const go = async (to) => {
 const logout = async () => {
   menuOpen.value = false;
   sheetOpen.value = false;
-  if (!window.confirm('确认退出当前账号？')) return;
+  const confirmed = await confirmAction({ title: '退出登录', message: '确认退出当前账号？', confirmText: '退出', type: 'danger' });
+  if (!confirmed) return;
   try { await auth.logout(); } catch {}
   localStorage.removeItem('token');
   localStorage.removeItem('refreshToken');

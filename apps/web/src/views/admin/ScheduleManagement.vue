@@ -2,6 +2,7 @@
 import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
 import { ref, computed, onMounted } from 'vue';
 import { admin } from '../../api';
+import { confirmAction } from '../../utils/feedback';
 
 const loading = ref(true);
 const saving = ref(false);
@@ -81,8 +82,9 @@ async function saveSchedule() {
   }
 }
 
-function clearAll() {
-  if (confirm('确定要清空整个课程表吗？此操作不可撤销。')) {
+async function clearAll() {
+  const ok = await confirmAction({ title: '清空课程表', message: '确定要清空整个课程表吗？此操作不可撤销。', confirmText: '清空', type: 'danger' });
+  if (ok) {
     scheduleGrid.value = initGrid();
   }
 }

@@ -7,6 +7,7 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import MarkdownIt from 'markdown-it';
 import { admin } from '../../api';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
+import { notify } from '../../utils/feedback';
 
 const CDN_BASE = 'https://studyapi.zhzgo.cn';
 
@@ -162,13 +163,13 @@ const openEditModal = async (article) => {
 
 const saveArticle = async () => {
   if (!form.value.title.trim()) {
-    alert('请输入文章标题');
+    notify('请输入文章标题', 'warning');
     return;
   }
 
   const hasContent = editMode.value === 'markdown' ? form.value.content_markdown?.trim() : form.value.content?.trim();
   if (!hasContent) {
-    alert('请输入文章内容');
+    notify('请输入文章内容', 'warning');
     return;
   }
 
@@ -189,7 +190,7 @@ const saveArticle = async () => {
     showModal.value = false;
     await fetchArticles();
   } catch (e) {
-    alert('保存失败: ' + (e.response?.data?.error || e.message));
+    notify('保存失败: ' + (e.response?.data?.error || e.message), 'error');
   }
 };
 
@@ -206,7 +207,7 @@ const deleteArticle = async (article) => {
       await admin.deleteArticle(article.id);
       await fetchArticles();
     } catch (e) {
-      alert('删除失败: ' + (e.response?.data?.error || e.message));
+      notify('删除失败: ' + (e.response?.data?.error || e.message), 'error');
     }
   }
 };
@@ -219,7 +220,7 @@ const togglePublish = async (article) => {
     });
     await fetchArticles();
   } catch (e) {
-    alert('操作失败');
+    notify('操作失败', 'error');
   }
 };
 
@@ -231,7 +232,7 @@ const togglePin = async (article) => {
     });
     await fetchArticles();
   } catch (e) {
-    alert('操作失败');
+    notify('操作失败', 'error');
   }
 };
 
@@ -245,7 +246,7 @@ const uploadImage = async (event) => {
     // Store full URL in database so it works everywhere (APP, web)
     form.value.cover_url = fullUrl(data.url);
   } catch (e) {
-    alert('上传失败');
+    notify('上传失败', 'error');
   }
 };
 

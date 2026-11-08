@@ -4,6 +4,7 @@ import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import MarkdownRenderer from "../components/ui/MarkdownRenderer.vue";
+import { notify } from '../utils/feedback';
 
 const route = useRoute();
 const router = useRouter();
@@ -56,7 +57,7 @@ const openInApp = () => {
 
 const copyLink = () => {
   navigator.clipboard.writeText(shareLink.value).then(() => {
-    alert("链接已复制到剪贴板");
+    notify('链接已复制到剪贴板', 'success');
   });
 };
 </script>

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { admin } from '../../api';
 import Toast from '../../components/ui/Toast.vue';
 import AdminPageHeading from '../../components/ui/AdminPageHeading.vue';
+import { confirmAction } from '../../utils/feedback';
 
 const toast = ref(null);
 const users = ref([]);
@@ -36,7 +37,10 @@ const prevPage = () => { if (page.value > 1) { page.value--; load(); } };
 
 const generate = async (row) => {
   if (isDemo.value) return toast.value?.add('演示账号不能生成导出密码', 'warning');
-  if (row.has_export_password && !window.confirm(`重新生成会立即使 ${row.username} 的旧密码失效，继续吗？`)) return;
+  if (row.has_export_password) {
+    const ok = await confirmAction({ title: '重新生成导出密码', message: `重新生成会立即使 ${row.username} 的旧密码失效，继续吗？`, confirmText: '重新生成', type: 'warning' });
+    if (!ok) return;
+  }
   generatingId.value = row.id;
   try {
     const response = await admin.generateExportPassword(row.id);
@@ -48,7 +52,8 @@ const generate = async (row) => {
 };
 
 const revoke = async (row) => {
-  if (!window.confirm(`撤销 ${row.username} 的导出授权？`)) return;
+  const ok = await confirmAction({ title: '撤销导出授权', message: `撤销 ${row.username} 的导出授权？`, confirmText: '撤销', type: 'danger' });
+  if (!ok) return;
   try { await admin.revokeExportPassword(row.id); toast.value?.add('导出授权已撤销', 'success'); await load(); }
   catch (error) { toast.value?.add(error.response?.data?.error || '撤销失败', 'error'); }
 };
