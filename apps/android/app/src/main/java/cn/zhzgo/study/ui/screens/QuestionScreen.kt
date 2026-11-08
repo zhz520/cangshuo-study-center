@@ -67,7 +67,7 @@ fun QuestionScreen(subjectId:Int,subjectName:String,isFavorites:Boolean=false,is
     fun next() {if(uiState.previewOnly && uiState.currentIndex+uiState.pageOffset+1>=20)showLockedDialog=true else viewModel.nextQuestion()}
     fun finish() {onNavigateToResult(uiState.currentScore,uiState.maxScore,viewModel.getCorrectCount(),viewModel.getIncorrectCount(),uiState.questions.size-uiState.submittedQuestions.size,elapsedSeconds)}
     Scaffold(topBar={
-        TopAppBar(expandedHeight=56.dp,title={Text(subjectName,style=MaterialTheme.typography.titleMedium,maxLines=1,overflow=TextOverflow.Ellipsis)},navigationIcon={IconButton(onClick=onBack,enabled=!saving){Icon(Icons.AutoMirrored.Filled.ArrowBack,"返回")}},actions={
+        CenterAlignedTopAppBar(expandedHeight=56.dp,title={Text(subjectName,style=MaterialTheme.typography.titleMedium,maxLines=1,overflow=TextOverflow.Ellipsis)},navigationIcon={IconButton(onClick=onBack,enabled=!saving){Icon(Icons.AutoMirrored.Filled.ArrowBack,"返回")}},actions={
             if(currentQuestion!=null) {
                 Box {
                     IconButton(onClick={menu=true}){Icon(Icons.Default.MoreHoriz,"更多练习操作")}
@@ -83,7 +83,7 @@ fun QuestionScreen(subjectId:Int,subjectName:String,isFavorites:Boolean=false,is
                     }
                 }
             }
-        },colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background))
+        },colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=MaterialTheme.colorScheme.background))
     },bottomBar={if(currentQuestion!=null)Surface(color=MaterialTheme.colorScheme.surface) {
         Column(Modifier.navigationBarsPadding().imePadding()) {
             HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
@@ -160,9 +160,10 @@ fun QuestionScreen(subjectId:Int,subjectName:String,isFavorites:Boolean=false,is
             }
             if(uiState.isLoadingMore)cn.zhzgo.study.ui.components.StudyLoading(Modifier.fillMaxWidth().padding(top=16.dp))
         }
-        if(showAnswerSheet)ModalBottomSheet(onDismissRequest={showAnswerSheet=false},containerColor=MaterialTheme.colorScheme.surface) {
+        if(showAnswerSheet)ModalBottomSheet(onDismissRequest={showAnswerSheet=false},containerColor=MaterialTheme.colorScheme.surface,
+            sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),dragHandle=null) {
             AnswerSheetDrawer(uiState.questions,uiState.currentIndex,uiState.userAnswers,{i->viewModel.jumpToQuestion(i);showAnswerSheet=false},isPlus,FREE_QUESTION_LIMIT,uiState.submittedQuestions,marked.toSet(),uiState.pageOffset,onClose={showAnswerSheet=false},
-                hasMore=!uiState.isLastPage,loadingMore=uiState.isLoadingMore,onLoadMore=viewModel::loadNextPage,onLoadPrevious=viewModel::loadPreviousPage,totalCount=uiState.totalCount)
+                hasMore=!uiState.isLastPage,loadingMore=uiState.isLoadingMore,onLoadMore=viewModel::loadNextPage,onLoadPrevious=viewModel::loadPreviousPage,totalCount=uiState.totalCount,modifier=Modifier.weight(1f))
         }
         if(showFinish)AlertDialog(onDismissRequest={showFinish=false},title={Text("结束本次练习？")},text={Text("本次已加载 ${uiState.questions.size} 题，已答 ${uiState.submittedQuestions.size} 题，未答 ${uiState.questions.size-uiState.submittedQuestions.size} 题。结果仅统计本次加载的题目，进度会保留。")},
             confirmButton={TextButton(onClick={showFinish=false;finish()}){Text("查看本次结果")}},dismissButton={TextButton(onClick={showFinish=false;showAnswerSheet=true}){Text("检查答题卡")}})

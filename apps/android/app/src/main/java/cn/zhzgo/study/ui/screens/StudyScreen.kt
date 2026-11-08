@@ -34,21 +34,29 @@ fun StudyScreen(onSubjectSelected: (Subject, Boolean) -> Unit, onNavigateToSearc
     val recentIds = memory.recent.map { it.id }
     val visible = state.subjects.filter { subject ->
         (activeMajor == -1 || subject.major_id == activeMajor) &&
-        (filter != 1 || subject.id in memory.pinned) && (filter != 2 || subject.id in recentIds) &&
-        (filter != 3 || state.progress.none { it.subject_id == subject.id }) &&
+        (filter != 1 || subject.id in memory.pinned) &&
+        (filter != 3 || subject.id in recentIds) &&
+        (filter != 4 || state.progress.none { it.subject_id == subject.id }) &&
         (subject.name.contains(query.trim(), true) || state.majors.firstOrNull { it.id == subject.major_id }?.name?.contains(query.trim(), true) == true)
-    }.let { list -> if (filter == 2) list.sortedBy { recentIds.indexOf(it.id) } else list }
+    }.let { list ->
+        when (filter) {
+            2 -> list.sortedByDescending { it.question_count ?: 0 }
+            3 -> list.sortedBy { recentIds.indexOf(it.id) }
+            else -> list
+        }
+    }
     fun open(subject: Subject) { viewModel.visit(subject); onSubjectSelected(subject, false) }
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 10.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("题库", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
             IconButton(onClick = onNavigateToSearch) { Icon(Icons.Outlined.ManageSearch, "搜索题目与知识点", Modifier.size(22.dp)) }
+            IconButton(onClick = viewModel::refresh, enabled = !state.loading) { Icon(Icons.Outlined.Refresh, "刷新题库", Modifier.size(22.dp)) }
         }
         Column(Modifier.padding(horizontal = 20.dp)) {
             Spacer(Modifier.height(12.dp))
             StudySearchField(query, { query = it }, "搜索科目、专业")
             LazyRow(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.padding(top = 10.dp, bottom = 8.dp)) {
-                items(listOf("全部", "常用", "最近学习", "未开始").withIndex().toList()) { (i, label) ->
+                items(listOf("全部", "常用", "热门", "最近", "未开始").withIndex().toList()) { (i, label) ->
                     ReferencePill(label, filter == i) { filter = i }
                 }
             }

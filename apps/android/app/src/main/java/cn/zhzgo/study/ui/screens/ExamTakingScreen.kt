@@ -110,7 +110,7 @@ fun ExamTakingScreen(paperId:Int,recordId:Int,onExamFinished:(Int)->Unit,onBack:
     }
     if(sheet)ModalBottomSheet(onDismissRequest={sheet=false},containerColor=MaterialTheme.colorScheme.surface) {
         AnswerSheetDrawer(questions.map{Question(it.id,null,it.type,it.content,it.options,null,null,null,null,null)},index,
-            answers.mapNotNull{(key,value)->key.toIntOrNull()?.let{it to value as Any}}.toMap(),{index=it;sheet=false},marked=marked.toSet())
+            answers.mapNotNull{(key,value)->key.toIntOrNull()?.let{it to value as Any}}.toMap(),{index=it;sheet=false},marked=marked.toSet(),modifier=Modifier.weight(1f))
         TextButton(onClick={questions.indices.firstOrNull{questions[it].id !in answered}?.let{index=it};sheet=false},enabled=answered.size<questions.size,modifier=Modifier.fillMaxWidth()){Text("跳到未作答题目")}
         Button(onClick={sheet=false;submit=true},enabled=!submitting,modifier=Modifier.fillMaxWidth().padding(horizontal=20.dp).heightIn(min=48.dp)){Text("检查并交卷")}
         Spacer(Modifier.height(24.dp))

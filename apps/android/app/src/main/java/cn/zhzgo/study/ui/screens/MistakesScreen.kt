@@ -25,7 +25,7 @@ import cn.zhzgo.study.ui.components.*
 @Composable
 fun MistakesScreen(subjectId: Int? = null, subjectName: String = "错题本", onBack: () -> Unit = {},
     onSubject: (Int, String) -> Unit = { _, _ -> }, onReview: (Int, String, List<Int>) -> Unit,
-    onFavorites: () -> Unit = {}, onStats: () -> Unit = {}, onLeaderboard: () -> Unit = {}, onData: () -> Unit = {},
+    onFavorites: () -> Unit = {}, onData: () -> Unit = {},
     viewModel: MistakesViewModel = viewModel()) {
     val state by viewModel.state.collectAsState()
     val memory by viewModel.memory.collectAsState()
@@ -35,6 +35,7 @@ fun MistakesScreen(subjectId: Int? = null, subjectName: String = "错题本", on
     var category by rememberSaveable { mutableStateOf("") }
     var status by rememberSaveable { mutableIntStateOf(0) }
     var mode by rememberSaveable { mutableIntStateOf(0) }
+    var sort by rememberSaveable { mutableIntStateOf(0) }
     var selected by remember { mutableStateOf(setOf<Int>()) }
     var managing by rememberSaveable { mutableStateOf(false) }
     var search by rememberSaveable { mutableStateOf(false) }
@@ -45,7 +46,7 @@ fun MistakesScreen(subjectId: Int? = null, subjectName: String = "错题本", on
     val visible = state.questions.filter { q ->
         (type.isBlank() || q.type == type) && (category.isBlank() || q.category == category) &&
             (status == 0 || (q.id in memory.mastered) == (status == 2)) && q.content.contains(query.trim(), true)
-    }
+    }.let { list -> if (sort == 1) list.sortedBy { it.id in memory.mastered } else list }
     val grouped = wrong.filter { status == 0 || (it.question_id in memory.mastered) == (status == 2) }.groupBy { it.subject_id }
     Scaffold(containerColor = colors.background, contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { if (subjectId != null) TopAppBar(expandedHeight = 56.dp,
@@ -75,7 +76,7 @@ fun MistakesScreen(subjectId: Int? = null, subjectName: String = "错题本", on
                         Box {
                             IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "更多学习工具", Modifier.size(22.dp)) }
                             DropdownMenu(menu, { menu = false }) {
-                                listOf("我的收藏" to onFavorites, "学习统计" to onStats, "学习排行" to onLeaderboard, "数据中心" to onData, "返回" to onBack).forEach { (label, action) ->
+                                listOf("我的收藏" to onFavorites, "数据中心" to onData, "返回" to onBack).forEach { (label, action) ->
                                     DropdownMenuItem(text = { Text(label) }, onClick = { menu = false; action() })
                                 }
                             }
@@ -170,7 +171,8 @@ fun MistakesScreen(subjectId: Int? = null, subjectName: String = "错题本", on
                             items(state.questions.map { it.type }.distinct()) { t -> ReferencePill(questionTypeLabel(t), type == t) { type = t; selected = emptySet() } }
                         }
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("${visible.size} 题 · 收录顺序倒序", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))
+                            Text("${visible.size} 题", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))
+                            TextButton(onClick = { sort = if (sort == 0) 1 else 0 }) { Text(if (sort == 0) "收录顺序" else "掌握程度") }
                             if (category.isNotBlank()) TextButton(onClick = { category = "" }) { Text("全部分类") }
                             TextButton(onClick = { onReview(subjectId, subjectName, visible.filter { it.id !in memory.mastered }.take(20).map { it.id }) }, enabled = visible.any { it.id !in memory.mastered }) { Text("复习本页") }
                         }

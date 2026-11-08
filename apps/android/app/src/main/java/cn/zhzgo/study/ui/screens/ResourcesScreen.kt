@@ -50,7 +50,6 @@ fun ResourcesScreen(onNavigateToArticle: (String) -> Unit = {}, onNavigateToCate
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 10.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("资源中心", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-            IconButton(onClick = { model.load() }, enabled = !state.loading) { Icon(Icons.Outlined.Refresh, "刷新资源", Modifier.size(22.dp)) }
             IconButton(onClick = { search = !search }) { Icon(Icons.Outlined.Search, "搜索资源", Modifier.size(22.dp)) }
         }
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)) {

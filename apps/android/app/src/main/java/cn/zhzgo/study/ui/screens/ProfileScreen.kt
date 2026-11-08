@@ -70,23 +70,22 @@ fun ProfileScreen(onSettings: () -> Unit, onAccount: () -> Unit, onSubscription:
                 }
                 Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = colors.onSurfaceVariant)
             }
-            Surface(onClick = onSubscription, color = colors.surface, shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, if (plus) colors.primary.copy(alpha = .22f) else colors.outlineVariant)) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = 10.dp),
+            Surface(onClick = onSubscription, color = Color(0xFF141A24), shape = RoundedCornerShape(14.dp)) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(32.dp).background(if (plus) colors.primary.copy(alpha = .06f) else colors.surfaceVariant, RoundedCornerShape(9.dp))
-                        .border(1.dp, if (plus) colors.primary.copy(alpha = .16f) else colors.outlineVariant, RoundedCornerShape(9.dp)),
+                    Box(Modifier.size(36.dp).background(Color.White.copy(alpha = .08f), RoundedCornerShape(10.dp))
+                        .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center) {
-                        PlusMark(Modifier.size(15.dp), tint = if (plus) colors.primary else colors.onSurfaceVariant)
+                        Icon(Icons.Outlined.WorkspacePremium, null, Modifier.size(21.dp), tint = Color(0xFFE4C36B))
                     }
                     Column(Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Text(if (plus) "Plus 会员已启用" else "升级 Plus", style = MaterialTheme.typography.bodyMedium)
-                        }
-                        Text(if(role=="admin") "管理员学习权益" else if (plus) "到期时间：${endDate.orEmpty().take(10)}" else "解锁完整题库与更多学习权益",
-                            style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp))
+                        Text(if (plus) "Plus 会员特权已启用" else "升级 Plus 会员", style = MaterialTheme.typography.titleSmall,
+                            color = Color.White)
+                        Text(if (role == "admin") "管理员学习权益" else if (plus) "到期时间：${endDate.orEmpty().take(10)}" else "解锁完整题库与更多学习权益",
+                            style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = .64f),
+                            modifier = Modifier.padding(top = 3.dp))
                     }
-                    Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = colors.onSurfaceVariant)
+                    Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = Color.White.copy(alpha = .58f))
                 }
             }
             Spacer(Modifier.height(14.dp))

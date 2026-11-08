@@ -268,7 +268,7 @@ fun AppNavigation() {
                 val encoded=URLEncoder.encode(name,StandardCharsets.UTF_8.toString())
                 navController.navigate("question/$id/$encoded")
             },onBank={openTab("study")},onLearning={navController.navigate("learning")},
-                  onProfile={openTab("profile")},onFavorites={navController.navigate("favorites")},onSearch={navController.navigate("search")},onExam={navController.navigate("exam_list")},onSchedule={navController.navigate("schedule")},onLeaderboard={navController.navigate("leaderboard")})
+                  onProfile={openTab("profile")},onFavorites={navController.navigate("favorites")},onSearch={navController.navigate("search")},onExam={navController.navigate("exam_list")},onSchedule={navController.navigate("schedule")})
         }
         composable("profile") {
             ProfileScreen(onSettings={navController.navigate("settings")},onAccount={navController.navigate("account_settings")},onPersonalize={navController.navigate("personalization")},
@@ -292,8 +292,7 @@ fun AppNavigation() {
             MistakesScreen(onBack={navController.navigateUp()},onSubject={id,name->
                 val encoded=URLEncoder.encode(name,StandardCharsets.UTF_8.toString())
                 navController.navigate("mistakes/$id/$encoded")
-            },onReview={_,_,_->},onFavorites={navController.navigate("favorites")},onStats={openTab("stats")},
-                onLeaderboard={navController.navigate("leaderboard")},onData={navController.navigate("data_center")})
+            },onReview={_,_,_->},onFavorites={navController.navigate("favorites")},onData={navController.navigate("data_center")})
         }
         composable("mistakes/{subjectId}/{subjectName}",arguments=listOf(navArgument("subjectId"){type=NavType.IntType},navArgument("subjectName"){type=NavType.StringType})) { entry ->
             val id=entry.arguments?.getInt("subjectId") ?: -1
@@ -361,9 +360,7 @@ fun AppNavigation() {
                 onNavigateToSubscription = { navController.navigate("subscription_plus") },
                 onNavigateToResult = { score, max, correct, incorrect, unanswered, seconds ->
                     val encodedName = URLEncoder.encode(subjectName, StandardCharsets.UTF_8.toString())
-                    navController.navigate("exercise_result/$subjectId/$encodedName/$score/$max/$correct/$incorrect/$unanswered?seconds=$seconds") {
-                        popUpTo(backStackEntry.destination.id) { inclusive = true }
-                    }
+                    navController.navigate("exercise_result/$subjectId/$encodedName/$score/$max/$correct/$incorrect/$unanswered?seconds=$seconds")
                 }
             )
         }
@@ -431,9 +428,7 @@ fun AppNavigation() {
                 onBack = { navController.navigateUp() },
                 onNavigateToSubscription = { navController.navigate("subscription_plus") },
                 onNavigateToResult = { score, max, correct, incorrect, unanswered, seconds ->
-                    navController.navigate("exercise_result/0/我的收藏/$score/$max/$correct/$incorrect/$unanswered?seconds=$seconds") {
-                        popUpTo(entry.destination.id) { inclusive = true }
-                    }
+                    navController.navigate("exercise_result/0/我的收藏/$score/$max/$correct/$incorrect/$unanswered?seconds=$seconds")
                 }
             )
         }
@@ -479,7 +474,8 @@ fun AppNavigation() {
         composable("stats") {
             StatsScreen(
                 root = true,
-                onBack = { navController.navigateUp() }
+                onBack = { navController.navigateUp() },
+                onLeaderboard = { navController.navigate("leaderboard") }
             )
         }
 
@@ -520,17 +516,20 @@ fun AppNavigation() {
                 unansweredCount = unanswered,
                 durationSeconds = backStackEntry.arguments?.getInt("seconds") ?: 0,
                 onBack = {
-                    if(!navController.popBackStack()) navController.navigate("home") { launchSingleTop=true }
+                    navController.navigate("home") {
+                        popUpTo("home") { inclusive = false }
+                        launchSingleTop = true
+                    }
                 },
-                onRetry = {
-                    val encodedName = URLEncoder.encode(subjectName, StandardCharsets.UTF_8.toString())
-                    val target=if(subjectId==0) "favorite_question" else "question/$subjectId/$encodedName"
-                    navController.navigate(target) { popUpTo(backStackEntry.destination.id) { inclusive=true } }
+                onViewAnalysis = {
+                    if (!navController.popBackStack()) navController.navigate("home") { launchSingleTop = true }
                 },
                 onReviewMistakes = {
                     val encodedName = URLEncoder.encode(subjectName, StandardCharsets.UTF_8.toString())
                     val reviewSubject=subjectId.takeIf{it>0} ?: -1
-                    navController.navigate("review/$reviewSubject/$encodedName") { popUpTo(backStackEntry.destination.id) { inclusive=true } }
+                    navController.navigate("review/$reviewSubject/$encodedName") {
+                        popUpTo("home") { inclusive = false }
+                    }
                 }
             )
         }

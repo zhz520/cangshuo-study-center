@@ -470,7 +470,8 @@ fun FillBlankQuestion(answerText:String,onAnswerChange:(String)->Unit,showAnswer
 @Composable
 fun AnswerSheetDrawer(questions:List<Question>,currentIndex:Int,answers:Map<Int,Any>,onQuestionClick:(Int)->Unit,
     isPlus:Boolean=true,freeLimit:Int=20,submitted:Set<Int>?=null,marked:Set<Int> = emptySet(),offset:Int=0,onClose:(()->Unit)?=null,
-    hasMore:Boolean=false,loadingMore:Boolean=false,onLoadMore:()->Unit={},onLoadPrevious:()->Unit={},totalCount:Int?=null) {
+    hasMore:Boolean=false,loadingMore:Boolean=false,onLoadMore:()->Unit={},onLoadPrevious:()->Unit={},totalCount:Int?=null,
+    modifier:Modifier=Modifier) {
     val colors=MaterialTheme.colorScheme
     val answered=questions.filter { q -> submitted?.contains(q.id) ?: when(val a=answers[q.id]) {is String->a.isNotBlank();is Collection<*>->a.isNotEmpty();else->false} }.map{it.id}.toSet()
     var page by remember { mutableIntStateOf(currentIndex / 50) }
@@ -488,7 +489,7 @@ fun AnswerSheetDrawer(questions:List<Question>,currentIndex:Int,answers:Map<Int,
     val indices = cn.zhzgo.study.data.PracticeWorkflow.sheetIndices(questions.size,page)
     val groups=indices.groupBy{questions[it].type}
     var expanded by remember(page, offset, groups.keys){mutableStateOf(groups.keys.toSet())}
-    Column(Modifier.fillMaxWidth().padding(horizontal=20.dp)) {
+    Column(modifier.fillMaxWidth().padding(horizontal=20.dp)) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Text("答题卡",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f))
             onClose?.let{close->IconButton(onClick=close){Icon(Icons.Default.Close,"关闭答题卡",Modifier.size(21.dp))}}
@@ -506,13 +507,17 @@ fun AnswerSheetDrawer(questions:List<Question>,currentIndex:Int,answers:Map<Int,
             TextButton(onClick={if(page<pages-1)page++ else {pendingOffset=offset+questions.size;onLoadMore()}},enabled=!loadingMore&&(page<pages-1||hasMore)) { Text(if(loadingMore)"加载中…" else "下一页") }
         }
         if(hasMore) Text("每页 50 题，按需加载后续题目",style=MaterialTheme.typography.labelSmall,color=colors.onSurfaceVariant,modifier=Modifier.padding(bottom=8.dp))
-        BoxWithConstraints(Modifier.fillMaxWidth().heightIn(max=430.dp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             val columns=(maxWidth.value/52).toInt().coerceAtLeast(1)
-            androidx.compose.foundation.lazy.LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 groups.forEach{(type,indices)->
                     item(key=type) {
                         Row(Modifier.fillMaxWidth().clickable{expanded=if(type in expanded)expanded-type else expanded+type}.heightIn(min=44.dp),verticalAlignment=Alignment.CenterVertically) {
-                            Text("${questionTypeLabel(type)}题（${indices.size}）",style=MaterialTheme.typography.titleSmall,modifier=Modifier.weight(1f))
+                            val contiguous = indices == (indices.first()..indices.last()).toList()
+                            val first = indices.first() + offset + 1
+                            val last = indices.last() + offset + 1
+                            val range = if (contiguous) if (first == last) "$first" else "$first-$last" else "${indices.size} 题"
+                            Text("${questionTypeLabel(type)}题（$range）",style=MaterialTheme.typography.titleSmall,modifier=Modifier.weight(1f))
                             Text(if(type in expanded)"⌃" else "⌄",color=colors.onSurfaceVariant)
                         }
                     }
@@ -535,7 +540,7 @@ fun AnswerSheetDrawer(questions:List<Question>,currentIndex:Int,answers:Map<Int,
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
     }
 }
 

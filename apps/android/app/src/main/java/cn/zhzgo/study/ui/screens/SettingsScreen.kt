@@ -875,30 +875,6 @@ fun SettingsScreen(
     cn.zhzgo.study.ui.components.StudyPage("更多设置",onBack) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(start=20.dp,end=20.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(24.dp)) {
             item {
-                SettingsSection("账户") {
-                    SettingsRow(Icons.Outlined.Person,"账号与安全",subtitle="个人资料、登录与绑定",onClick=onNavigateToAccountSettings)
-                    SettingsRow(Icons.Outlined.VerifiedUser,"会员状态",subtitle=if(isUserPlus(subscriptionEndDate)) "Plus · 到期 ${subscriptionEndDate.orEmpty().take(10)}" else "查看会员权益",onClick=onNavigateToSubscription)
-                }
-            }
-            item {
-                SettingsSection("外观") {
-                    SettingsRow(Icons.Outlined.DarkMode,"主题模式",subtitle=when(currentAppearance){"light"->"浅色";"dark"->"深色";else->"跟随系统"},onClick={showAppearanceDialog=true})
-                    SettingsRow(Icons.Outlined.Palette,"重点色",trailingContent={Box(Modifier.size(16.dp).background(MaterialTheme.colorScheme.primary,CircleShape))},onClick={showColorDialog=true})
-                }
-            }
-            item {
-                SettingsSection("反馈与支持") {
-                    SettingsRow(Icons.Outlined.Feedback,"意见反馈",onClick={
-                        try{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("mailto:14329140@qq.com")))}catch(e:Exception){Toast.makeText(context,"未找到邮件客户端",Toast.LENGTH_SHORT).show()}
-                    })
-                    SettingsRow(Icons.Outlined.Star,"给应用评分",onClick={showRatingDialog=true})
-                    SettingsRow(Icons.Outlined.Share,"分享应用",onClick={
-                        val intent=Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,"烁学 · 专注每一次进步 https://study.zhzgo.cn/download")}
-                        context.startActivity(Intent.createChooser(intent,"分享烁学"))
-                    })
-                }
-            }
-            item {
                 SettingsSection("应用") {
                     SettingsRow(Icons.Outlined.SystemUpdate,"检查更新",subtitle="版本 $versionName",onClick={if(!isCheckingUpdate)updateViewModel.checkForUpdates(context,isAutoCheck=false)})
                     SettingsRow(Icons.Outlined.History,"版本记录",onClick={viewModel.fetchVersionHistory();showVersionHistoryDialog=true})
@@ -906,8 +882,7 @@ fun SettingsScreen(
                 }
             }
             item {
-                SettingsSection("关于") {
-                    SettingsRow(Icons.Outlined.Info,"关于烁学",onClick={showAboutDialog=true})
+                SettingsSection("法律与信息") {
                     SettingsRow(Icons.Outlined.ReceiptLong,"开源许可",onClick={showLicensesDialog=true})
                     SettingsRow(Icons.Outlined.Description,"第三方信息共享清单",onClick={showThirdPartyDialog=true})
                     SettingsRow(Icons.Outlined.Language,"官方网站",onClick={onNavigateToWebView("https://study.zhzgo.cn/","官方网站")})

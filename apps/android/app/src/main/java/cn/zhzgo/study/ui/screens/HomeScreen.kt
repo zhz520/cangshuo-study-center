@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,7 +27,7 @@ import java.time.temporal.ChronoUnit
 @Composable
 fun HomeScreen(onContinue: (Int, String) -> Unit, onBank: () -> Unit, onLearning: () -> Unit,
     onProfile: () -> Unit, onExam: () -> Unit, onSchedule: () -> Unit,
-    onFavorites: () -> Unit = {}, onSearch: () -> Unit = {}, onLeaderboard: () -> Unit = {}, viewModel: HomeViewModel = viewModel()) {
+    onFavorites: () -> Unit = {}, onSearch: () -> Unit = {}, viewModel: HomeViewModel = viewModel()) {
     val state by viewModel.state.collectAsState()
     val memory by viewModel.memory.collectAsState()
     val plus by viewModel.plus.collectAsState()
@@ -52,7 +53,11 @@ fun HomeScreen(onContinue: (Int, String) -> Unit, onBank: () -> Unit, onLearning
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("${cn.zhzgo.study.utils.GreetingUtils.getGreeting()}，", style = MaterialTheme.typography.headlineMedium)
-                    Text(if(plus && memory.greeting.isNotBlank())memory.greeting else "保持专注，一起进步", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp))
+                    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if(plus && memory.greeting.isNotBlank())memory.greeting else "保持专注，一起进步", style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                        PlusMark(Modifier.padding(start = 6.dp).size(9.dp), tint = Color(0xFFC9A44C))
+                    }
                 }
                 IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, "搜索题目", Modifier.size(22.dp)) }
                 IconButton(onClick = { showNotice = true }) { Icon(Icons.Outlined.NotificationsNone, "公告与通知", Modifier.size(22.dp)) }
@@ -105,15 +110,17 @@ fun HomeScreen(onContinue: (Int, String) -> Unit, onBank: () -> Unit, onLearning
                 HomeShortcut("学习计划", Icons.Outlined.EventNote, Modifier.weight(1f), onSchedule)
             }
         }
-        item {
-            StudyRow("学习排行榜", "刷题数量、正确率与练习分数", onClick = onLeaderboard)
-        }
         if (state.daily != null && (!plus || memory.showDailyQuote)) item {
-            Text("每日一句", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 8.dp))
-            Text(state.daily?.proverb?.en ?: state.daily?.poetry?.line ?: state.daily?.quote.orEmpty(),
-                style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-            Text(state.daily?.proverb?.zh ?: state.daily?.poetry?.src.orEmpty(), style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+            Surface(color = colors.surface, shape = RoundedCornerShape(12.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text("每日一句", style = MaterialTheme.typography.titleSmall)
+                    Text(state.daily?.proverb?.en ?: state.daily?.poetry?.line ?: state.daily?.quote.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp))
+                    Text(state.daily?.proverb?.zh ?: state.daily?.poetry?.src.orEmpty(), style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+                }
+            }
         }
         val countdown = state.home?.countdowns?.mapNotNull { c ->
             runCatching { c to ChronoUnit.DAYS.between(today, LocalDate.parse(c.target_date.orEmpty().take(10))) }.getOrNull()

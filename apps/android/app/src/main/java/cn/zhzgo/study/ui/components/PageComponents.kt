@@ -23,9 +23,11 @@ fun StudyToolTopBar(title:@Composable ()->Unit,navigationIcon:@Composable ()->Un
 fun StudyPage(title:String,onBack:(()->Unit)?=null,actions:@Composable RowScope.()->Unit={},
     bottomBar:@Composable ()->Unit={},content:@Composable (PaddingValues)->Unit) {
     Scaffold(containerColor=MaterialTheme.colorScheme.background,topBar={
-        TopAppBar(expandedHeight=56.dp,title={Text(title,style=MaterialTheme.typography.titleLarge)},navigationIcon={
+        CenterAlignedTopAppBar(expandedHeight=56.dp,title={
+            Text(title,style=MaterialTheme.typography.titleMedium,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        },navigationIcon={
             if(onBack!=null) IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"返回")}
-        },actions=actions,colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background))
+        },actions=actions,colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=MaterialTheme.colorScheme.background))
     },bottomBar=bottomBar,content=content)
 }
 @Composable fun DetailPair(label:String,value:String) {

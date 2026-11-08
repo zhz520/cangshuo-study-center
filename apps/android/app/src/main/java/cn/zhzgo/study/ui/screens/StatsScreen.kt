@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -127,7 +129,7 @@ class StatsViewModel(application: Application) : AndroidViewModel(application) {
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 @Composable
-fun StatsScreen(onBack:()->Unit,viewModel:StatsViewModel=viewModel(),root:Boolean=false) {
+fun StatsScreen(onBack:()->Unit,viewModel:StatsViewModel=viewModel(),root:Boolean=false,onLeaderboard:()->Unit={}) {
     val stats by viewModel.stats.collectAsState()
     val detailed by viewModel.detailed.collectAsState()
     val progress by viewModel.progress.collectAsState()
@@ -147,6 +149,8 @@ fun StatsScreen(onBack:()->Unit,viewModel:StatsViewModel=viewModel(),root:Boolea
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(start=20.dp,end=20.dp,bottom=24.dp)) {
             item {
                 Text("看见积累，找到下一步",style=MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(12.dp))
+                StudyRow("学习排行榜", "刷题数量、正确率与练习分数", Icons.Outlined.EmojiEvents, onClick = onLeaderboard)
                 Spacer(Modifier.height(20.dp))
                 Metric(if(seconds>=3600)"${seconds/3600} 小时 ${seconds%3600/60} 分" else if(seconds>=60)"${seconds/60} 分钟" else "$seconds 秒","近 7 天本机学习时长")
                 Spacer(Modifier.height(20.dp))
