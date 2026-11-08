@@ -35,3 +35,12 @@
 - Web 7 项测试通过。
 - 27 个路由在 1440 和 390 视口无横向溢出、无控制台错误。
 - 浏览器实测全局 Toast、确认框、题库导出路由和答题设置面板。
+
+## 生产发布
+
+- 2026-11-08 13:35（CST）完成静态 Web 切换，服务端、数据库和题库数据未改动。
+- 切换前完整备份：`/www/backup/codex/web-ui-20261108T053326Z/web-before.tar.gz`，SHA-256 `da308fe12a16854d6a989e90c3d53713595da1f62c62041301bb02a672acc034`。
+- 发布包保留在 `/root/web-ui-20261108T053326Z/web-dist.tar.gz`。
+- 生产 `index.html` SHA-256 为 `8ab64be6dcbc8b6c0ab3ac6c5a1c8f39a79c04b6e7b1ba2ee04764c1bd37865a`。
+- 上一版带哈希的静态资源保留在 `assets/` 中，避免已打开旧页面的用户切换路由时遇到 404。
+- 首页、`/admin`、`/export` 和 API 域名均返回 200；入口 JS/CSS 返回 200；两个 APK 下载地址返回 206。
